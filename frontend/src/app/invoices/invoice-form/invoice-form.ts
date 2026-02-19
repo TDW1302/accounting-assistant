@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { switchMap } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { Supplier } from '../../models/supplier.model';
@@ -23,6 +24,8 @@ export class InvoiceForm implements OnInit {
   suppliers = signal<Supplier[]>([]);
   isEdit = false;
   invoiceId?: number;
+  selectedFile: File | null = null;
+  existingFilePath: string | null = null;
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
     { value: 'PURCHASE', label: 'Achat' },
@@ -50,7 +53,6 @@ export class InvoiceForm implements OnInit {
       paymentDate: [null],
       peppol: [false, Validators.required],
       comment: [null],
-      filePath: [null],
       dateScope: ['NONE', Validators.required],
       scopeDate: [null],
       fileDetail: [null],
@@ -63,6 +65,7 @@ export class InvoiceForm implements OnInit {
       this.isEdit = true;
       this.invoiceId = +id;
       this.invoiceService.get(this.invoiceId).subscribe(inv => {
+        this.existingFilePath = inv.filePath;
         this.form.patchValue({
           year: inv.year,
           subNumber: inv.subNumber,
@@ -75,13 +78,17 @@ export class InvoiceForm implements OnInit {
           paymentDate: inv.paymentDate,
           peppol: inv.peppol,
           comment: inv.comment,
-          filePath: inv.filePath,
           dateScope: inv.dateScope,
           scopeDate: inv.scopeDate,
           fileDetail: inv.fileDetail,
         });
       });
     }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.selectedFile = input.files?.[0] ?? null;
   }
 
   save(): void {
@@ -97,7 +104,7 @@ export class InvoiceForm implements OnInit {
       paymentDate: this.form.value.paymentDate || null,
       scopeDate: this.form.value.scopeDate || null,
       comment: this.form.value.comment || null,
-      filePath: this.form.value.filePath || null,
+      filePath: this.existingFilePath,
       fileDetail: this.form.value.fileDetail || null,
     };
 
@@ -105,7 +112,14 @@ export class InvoiceForm implements OnInit {
       ? this.invoiceService.update(this.invoiceId!, req)
       : this.invoiceService.create(req);
 
-    op.subscribe(() => this.router.navigate(['/invoices']));
+    if (this.selectedFile) {
+      const file = this.selectedFile;
+      op.pipe(
+        switchMap(invoice => this.invoiceService.upload(invoice.id, file))
+      ).subscribe(() => this.router.navigate(['/invoices']));
+    } else {
+      op.subscribe(() => this.router.navigate(['/invoices']));
+    }
   }
 
   private todayString(): string {

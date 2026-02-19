@@ -4,6 +4,7 @@ import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.service.InvoiceService;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -65,5 +67,11 @@ public class InvoiceController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         invoiceService.delete(id);
+    }
+
+    @PostMapping("/{id}/upload")
+    public InvoiceResponse uploadFile(@PathVariable Long id,
+                                       @RequestParam("file") MultipartFile file) throws IOException {
+        return invoiceService.uploadFile(id, file);
     }
 }

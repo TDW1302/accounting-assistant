@@ -89,8 +89,16 @@
   </div>
 
   <div class="form-group">
-    <label for="filePath">Chemin du fichier</label>
-    <input id="filePath" type="text" formControlName="filePath" placeholder="\\NAS\homes\...">
+    <label>Fichier PDF</label>
+    <div class="file-upload">
+      <input type="file" accept=".pdf" (change)="onFileSelected($event)">
+      @if (selectedFile) {
+        <span class="file-name">{{ selectedFile.name }}</span>
+      }
+      @if (existingFilePath) {
+        <span class="existing-file">Fichier actuel : {{ existingFilePath }}</span>
+      }
+    </div>
   </div>
 
   <div class="form-group">

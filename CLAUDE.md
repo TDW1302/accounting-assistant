@@ -57,9 +57,14 @@ Application personnelle d'aide à la comptabilité. Remplace un fichier Excel ut
 - Exemples : `001-Auto5-PneuHiver.pdf`, `003-2412-OliverJames.PDF`, `008.1-2601-AmazonUgreenHDMI.pdf`
 
 ### Stockage des fichiers
-- Les fichiers PDF restent sur le NAS Synology
-- La base de données stocke uniquement le chemin d'accès vers le fichier
-- Structure NAS :
+- Upload direct de fichiers PDF depuis le formulaire de facture
+- Les fichiers sont renommés automatiquement via `FileNameGenerator` et sauvegardés dans un répertoire configurable (`app.upload.directory` dans `application.properties`)
+- Organisation en sous-dossiers par année : `{uploadDir}/{année}/{fichier.pdf}`
+- Endpoint dédié `POST /api/invoices/{id}/upload` (l'upload se fait après la création/modification car le nom dépend du numéro attribué)
+- `FileStorageService` gère le stockage/suppression des fichiers sur disque
+- Le frontend chaîne automatiquement l'upload après le save (create/update → upload via `switchMap`)
+- La base de données stocke le chemin complet vers le fichier dans `filePath`
+- Ancien stockage NAS (référence historique) :
   - Avant 2026 : \\NAS\homes\VITe\{année}\Done\
   - Depuis 2026 : \\NAS\homes\VITe\{année}\ (plus de sous-dossier Done)
 
@@ -78,6 +83,7 @@ Application personnelle d'aide à la comptabilité. Remplace un fichier Excel ut
 ### Périmètre v1
 - Remplacer l'Excel : saisie et gestion des factures (CRUD)
 - Automatiser le renommage des fichiers PDF selon la numérotation
+- Upload de documents PDF lors de l'encodage de factures (renommage automatique, stockage par année)
 - Gestion par année avec numérotation séquentielle redémarrant à 1
 
 ### Périmètre futur (hors v1)

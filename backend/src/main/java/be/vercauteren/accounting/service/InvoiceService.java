@@ -7,10 +7,12 @@ import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.specification.InvoiceSpecification;
 import jakarta.persistence.EntityNotFoundException;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final SupplierService supplierService;
     private final FileNameGenerator fileNameGenerator;
+    private final FileStorageService fileStorageService;
 
     public List<InvoiceResponse> findByYear(Integer year) {
         return invoiceRepository.findByYearOrderByNumberAscSubNumberAsc(year).stream()
@@ -113,6 +116,21 @@ public class InvoiceService {
         invoice.setDateScope(request.dateScope());
         invoice.setScopeDate(request.scopeDate());
         invoice.setFileDetail(request.fileDetail());
+
+        return toResponse(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
+    public InvoiceResponse uploadFile(Long id, MultipartFile file) throws IOException {
+        Invoice invoice = getOrThrow(id);
+        String generatedName = fileNameGenerator.generate(invoice);
+
+        if (invoice.getFilePath() != null) {
+            fileStorageService.delete(invoice.getFilePath());
+        }
+
+        String filePath = fileStorageService.store(file, generatedName, invoice.getYear());
+        invoice.setFilePath(filePath);
 
         return toResponse(invoiceRepository.save(invoice));
     }

@@ -47,4 +47,10 @@ export class InvoiceService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
   }
+
+  upload(id: number, file: File): Observable<Invoice> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<Invoice>(`${this.url}/${id}/upload`, formData);
+  }
 }
