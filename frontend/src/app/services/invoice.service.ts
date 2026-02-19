@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Invoice, InvoiceRequest } from '../models/invoice.model';
+import { Invoice, InvoiceExtractionResult, InvoiceRequest } from '../models/invoice.model';
 
 export interface InvoiceSearchParams {
   year?: number;
@@ -46,6 +46,12 @@ export class InvoiceService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
+  }
+
+  extract(file: File): Observable<InvoiceExtractionResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<InvoiceExtractionResult>(`${this.url}/extract`, formData);
   }
 
   upload(id: number, file: File): Observable<Invoice> {

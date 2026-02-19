@@ -1,7 +1,9 @@
 package be.vercauteren.accounting.controller;
 
+import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.service.InvoiceExtractionService;
 import be.vercauteren.accounting.service.InvoiceService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -29,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final InvoiceExtractionService invoiceExtractionService;
 
     @GetMapping
     public List<InvoiceResponse> findByYear(@RequestParam Integer year) {
@@ -67,6 +70,11 @@ public class InvoiceController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         invoiceService.delete(id);
+    }
+
+    @PostMapping("/extract")
+    public InvoiceExtractionResult extract(@RequestParam("file") MultipartFile file) throws IOException {
+        return invoiceExtractionService.extract(file);
     }
 
     @PostMapping("/{id}/upload")

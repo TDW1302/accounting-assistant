@@ -92,6 +92,9 @@
     <label>Fichier PDF</label>
     <div class="file-upload">
       <input type="file" accept=".pdf" (change)="onFileSelected($event)">
+      @if (extracting) {
+        <span class="extracting">Extraction des données en cours...</span>
+      }
       @if (selectedFile) {
         <span class="file-name">{{ selectedFile.name }}</span>
       }

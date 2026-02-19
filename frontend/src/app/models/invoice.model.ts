@@ -24,6 +24,20 @@ export interface Invoice {
   generatedFileName: string;
 }
 
+export interface InvoiceExtractionResult {
+  type: InvoiceType | null;
+  supplierId: number | null;
+  supplierName: string | null;
+  amountIncVat: number | null;
+  amountExVat: number | null;
+  vatAmount: number | null;
+  receptionDate: string | null;
+  paymentDate: string | null;
+  dateScope: DateScope | null;
+  scopeDate: string | null;
+  comment: string | null;
+}
+
 export interface InvoiceRequest {
   subNumber: number | null;
   year: number;

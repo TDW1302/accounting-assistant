@@ -26,6 +26,7 @@ export class InvoiceForm implements OnInit {
   invoiceId?: number;
   selectedFile: File | null = null;
   existingFilePath: string | null = null;
+  extracting = false;
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
     { value: 'PURCHASE', label: 'Achat' },
@@ -89,6 +90,30 @@ export class InvoiceForm implements OnInit {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedFile = input.files?.[0] ?? null;
+
+    if (this.selectedFile && !this.isEdit) {
+      this.extracting = true;
+      this.invoiceService.extract(this.selectedFile).subscribe({
+        next: (result) => {
+          const patch: Record<string, unknown> = {};
+          if (result.type) patch['type'] = result.type;
+          if (result.supplierId) patch['supplierId'] = result.supplierId;
+          if (result.amountIncVat != null) patch['amountIncVat'] = result.amountIncVat;
+          if (result.amountExVat != null) patch['amountExVat'] = result.amountExVat;
+          if (result.vatAmount != null) patch['vatAmount'] = result.vatAmount;
+          if (result.receptionDate) patch['receptionDate'] = result.receptionDate;
+          if (result.paymentDate) patch['paymentDate'] = result.paymentDate;
+          if (result.dateScope) patch['dateScope'] = result.dateScope;
+          if (result.scopeDate) patch['scopeDate'] = result.scopeDate;
+          if (result.comment) patch['comment'] = result.comment;
+          this.form.patchValue(patch);
+          this.extracting = false;
+        },
+        error: () => {
+          this.extracting = false;
+        },
+      });
+    }
   }
 
   save(): void {
