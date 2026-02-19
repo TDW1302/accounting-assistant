@@ -1,0 +1,10 @@
+# Backend
+backend/build/
+backend/data/
+backend/.gradle/
+backend.tgz
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

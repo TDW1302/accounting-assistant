@@ -1,0 +1,112 @@
+<div class="page-header">
+  <h1>Factures</h1>
+  <div class="header-actions">
+    @if (!searchActive) {
+      <select [ngModel]="selectedYear()" (ngModelChange)="onYearChange($event)">
+        @for (y of years; track y) {
+          <option [ngValue]="y">{{ y }}</option>
+        }
+      </select>
+    }
+    @if (searchActive) {
+      <span class="badge-search">Recherche active</span>
+      <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
+    }
+    <a class="btn btn-primary" routerLink="/invoices/new">+ Nouvelle facture</a>
+  </div>
+</div>
+
+<div class="search-bar">
+  <div class="search-row">
+    <div class="search-field">
+      <label>Mot-clé</label>
+      <input type="text" [(ngModel)]="keyword" placeholder="Commentaire, fournisseur, détail..."
+             (keyup.enter)="search()">
+    </div>
+    <div class="search-field">
+      <label>Fournisseur</label>
+      <select [(ngModel)]="supplierId">
+        <option [ngValue]="null">-- Tous --</option>
+        @for (s of suppliers(); track s.id) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="search-field">
+      <label>Montant min</label>
+      <input type="number" [(ngModel)]="amountMin" step="0.01" placeholder="Min">
+    </div>
+    <div class="search-field">
+      <label>Montant max</label>
+      <input type="number" [(ngModel)]="amountMax" step="0.01" placeholder="Max">
+    </div>
+    <div class="search-field">
+      <label>Date du</label>
+      <input type="date" [(ngModel)]="dateFrom">
+    </div>
+    <div class="search-field">
+      <label>Date au</label>
+      <input type="date" [(ngModel)]="dateTo">
+    </div>
+  </div>
+  <div class="search-actions">
+    <button class="btn btn-primary" (click)="search()">Rechercher</button>
+    <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      @if (searchActive) {
+        <th>Année</th>
+      }
+      <th>N°</th>
+      <th>Type</th>
+      <th>Fournisseur</th>
+      <th class="text-right">TTC</th>
+      <th class="text-right">HTVA</th>
+      <th class="text-right">TVA</th>
+      <th>Date réception</th>
+      <th>Date paiement</th>
+      <th>Peppol</th>
+      <th>Nom fichier</th>
+      <th>Commentaire</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (inv of invoices(); track inv.id) {
+      <tr [class.sale-row]="inv.type === 'SALE'">
+        @if (searchActive) {
+          <td>{{ inv.year }}</td>
+        }
+        <td>{{ formatNumber(inv) }}</td>
+        <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
+        <td>{{ inv.supplier.name }}</td>
+        <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ inv.amountExVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ inv.vatAmount | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
+        <td>{{ inv.paymentDate | date:'dd/MM/yyyy' }}</td>
+        <td>{{ inv.peppol ? 'V' : '' }}</td>
+        <td class="mono">{{ inv.generatedFileName }}</td>
+        <td>{{ inv.comment }}</td>
+        <td class="actions">
+          <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
+          <button class="btn btn-sm btn-danger" (click)="deleteInvoice(inv)">Supprimer</button>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td [attr.colspan]="searchActive ? 13 : 12" class="empty">
+          @if (searchActive) {
+            Aucune facture trouvée pour cette recherche.
+          } @else {
+            Aucune facture pour {{ selectedYear() }}.
+          }
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>

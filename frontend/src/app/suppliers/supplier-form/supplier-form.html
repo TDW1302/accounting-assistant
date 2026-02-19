@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1>{{ isEdit ? 'Modifier le fournisseur' : 'Nouveau fournisseur' }}</h1>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="form-group">
+    <label for="name">Nom</label>
+    <input id="name" type="text" formControlName="name" placeholder="Ex: P&Partners">
+  </div>
+
+  <div class="form-group">
+    <label for="alias">Alias (pour nommage fichier)</label>
+    <input id="alias" type="text" formControlName="alias" placeholder="Ex: PPartners">
+  </div>
+
+  <div class="form-group">
+    <label for="enterpriseNumber">Numéro d'entreprise (BCE)</label>
+    <input id="enterpriseNumber" type="text" formControlName="enterpriseNumber" placeholder="0XXX.XXX.XXX">
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+      {{ isEdit ? 'Enregistrer' : 'Créer' }}
+    </button>
+    <a class="btn" routerLink="/suppliers">Annuler</a>
+  </div>
+</form>

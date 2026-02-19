@@ -1,0 +1,107 @@
+<div class="page-header">
+  <h1>{{ isEdit ? 'Modifier la facture' : 'Nouvelle facture' }}</h1>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="year">Année</label>
+      <input id="year" type="number" formControlName="year">
+    </div>
+    <div class="form-group">
+      <label for="subNumber">Sous-numéro</label>
+      <input id="subNumber" type="number" formControlName="subNumber" placeholder="Optionnel">
+    </div>
+    <div class="form-group">
+      <label for="type">Type</label>
+      <select id="type" formControlName="type">
+        @for (t of invoiceTypes; track t.value) {
+          <option [value]="t.value">{{ t.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="supplierId">Fournisseur / Client</label>
+      <select id="supplierId" formControlName="supplierId">
+        <option [ngValue]="null" disabled>-- Sélectionner --</option>
+        @for (s of suppliers(); track s.id) {
+          <option [value]="s.id">{{ s.name }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="amountIncVat">Montant TTC</label>
+      <input id="amountIncVat" type="number" step="0.01" formControlName="amountIncVat">
+    </div>
+    <div class="form-group">
+      <label for="amountExVat">Montant HTVA</label>
+      <input id="amountExVat" type="number" step="0.01" formControlName="amountExVat">
+    </div>
+    <div class="form-group">
+      <label for="vatAmount">TVA</label>
+      <input id="vatAmount" type="number" step="0.01" formControlName="vatAmount">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="receptionDate">Date de réception</label>
+      <input id="receptionDate" type="date" formControlName="receptionDate">
+    </div>
+    <div class="form-group">
+      <label for="paymentDate">Date de paiement</label>
+      <input id="paymentDate" type="date" formControlName="paymentDate">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>
+        <input type="checkbox" formControlName="peppol">
+        Reçu via Peppol
+      </label>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="dateScope">Portée de la date</label>
+      <select id="dateScope" formControlName="dateScope">
+        @for (ds of dateScopes; track ds.value) {
+          <option [value]="ds.value">{{ ds.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="scopeDate">Date de référence</label>
+      <input id="scopeDate" type="date" formControlName="scopeDate">
+    </div>
+    <div class="form-group">
+      <label for="fileDetail">Détail fichier</label>
+      <input id="fileDetail" type="text" formControlName="fileDetail" placeholder="Ex: PneuHiver">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="filePath">Chemin du fichier</label>
+    <input id="filePath" type="text" formControlName="filePath" placeholder="\\NAS\homes\...">
+  </div>
+
+  <div class="form-group">
+    <label for="comment">Commentaire</label>
+    <textarea id="comment" formControlName="comment"></textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+      {{ isEdit ? 'Enregistrer' : 'Créer' }}
+    </button>
+    <a class="btn" routerLink="/invoices">Annuler</a>
+  </div>
+</form>

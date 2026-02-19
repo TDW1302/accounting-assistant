@@ -1,0 +1,11 @@
+.actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.375rem;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 2rem !important;
+}

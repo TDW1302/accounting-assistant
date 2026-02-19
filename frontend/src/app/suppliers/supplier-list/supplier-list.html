@@ -1,0 +1,32 @@
+<div class="page-header">
+  <h1>Fournisseurs</h1>
+  <a class="btn btn-primary" routerLink="/suppliers/new">+ Nouveau fournisseur</a>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Alias</th>
+      <th>N° entreprise</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (s of suppliers(); track s.id) {
+      <tr>
+        <td>{{ s.name }}</td>
+        <td class="mono">{{ s.alias }}</td>
+        <td>{{ s.enterpriseNumber }}</td>
+        <td class="actions">
+          <a class="btn btn-sm" [routerLink]="['/suppliers', s.id, 'edit']">Modifier</a>
+          <button class="btn btn-sm btn-danger" (click)="deleteSupplier(s)">Supprimer</button>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="4" class="empty">Aucun fournisseur.</td>
+      </tr>
+    }
+  </tbody>
+</table>

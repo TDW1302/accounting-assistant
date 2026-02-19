@@ -1,0 +1,39 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.75rem 1.5rem;
+  background: #1e293b;
+  color: #fff;
+}
+
+.nav-brand {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: #fff;
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+
+  a {
+    color: #94a3b8;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+
+    &:hover,
+    &.active {
+      color: #fff;
+    }
+  }
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
