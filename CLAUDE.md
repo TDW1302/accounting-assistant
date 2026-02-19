@@ -1,128 +1,128 @@
 # accounting-assistant
 
 ## Description
-Application personnelle d'aide à la comptabilité. Remplace un fichier Excel utilisé pour gérer les factures d'achat et de vente.
+Personal accounting helper application. Replaces an Excel file used to manage purchase and sale invoices.
 
-## Workflow actuel
-1. Réception des factures (certaines via Peppol, d'autres manuellement)
-2. Enregistrement dans un Excel avec : fournisseur, montant, date de réception, date de paiement, reçu via Peppol (oui/non), commentaires
-3. Numérotation ordonnée des factures (achat et vente dans un seul ordre commun)
-4. Renommage des fichiers PDF selon l'ordre de l'Excel
-5. Upload dans Falco (logiciel comptable)
+## Current workflow
+1. Receive invoices (some via Peppol, others manually)
+2. Record in an Excel file with: supplier, amount, reception date, payment date, received via Peppol (yes/no), comments
+3. Sequential numbering of invoices (purchases and sales share a single numbering sequence)
+4. Rename PDF files according to the Excel ordering
+5. Upload to Falco (accounting software)
 
-## Structure Excel actuelle (Facturier.xlsx)
-- Une feuille par année (2024, 2025, 2026)
-- Numérotation qui redémarre à 1 chaque année
-- Colonnes (version la plus complète, 2026) :
-  - Numéro (ordre séquentiel)
-  - Fournisseur
-  - Montant
-  - Date réception
-  - Date paiement
-  - Peppol ("V" si reçu via Peppol)
-  - Commentaires
-- Distinction achat/vente : les factures "Oliver James" (ou "Facture Oliver James") sont des ventes, le reste sont des achats
-- Les ventes sont mises en évidence par une coloration verte (#C6EFCE) sur la cellule du montant
-- Fichier source : C:\Users\verca\OneDrive\Documents\Facturier.xlsx
+## Current Excel structure (Facturier.xlsx)
+- One sheet per year (2024, 2025, 2026)
+- Numbering restarts at 1 each year
+- Columns (most complete version, 2026):
+  - Number (sequential order)
+  - Supplier
+  - Amount
+  - Reception date
+  - Payment date
+  - Peppol ("V" if received via Peppol)
+  - Comments
+- Purchase/sale distinction: "Oliver James" (or "Facture Oliver James") invoices are sales, the rest are purchases
+- Sales are highlighted with a green background (#C6EFCE) on the amount cell
+- Source file: C:\Users\verca\OneDrive\Documents\Facturier.xlsx
 
-## Décisions
+## Decisions
 
-### Clients / Fournisseurs
-- Oliver James est le seul client actuel, mais l'application doit prévoir plusieurs clients à l'avenir
-- Un même tiers (Supplier) peut être fournisseur dans une transaction et client dans une autre
-- Le rôle est déterminé par le type de la facture (PURCHASE/SALE), pas par le tiers
+### Clients / Suppliers
+- Oliver James is the only current client, but the application should support multiple clients in the future
+- The same party (Supplier) can be a supplier in one transaction and a client in another
+- The role is determined by the invoice type (PURCHASE/SALE), not by the party
 
-### Type d'application
-- Application web (Java backend + Angular frontend)
+### Application type
+- Web application (Java backend + Angular frontend)
 
 ### Technologies
-- **Backend** : Java 25 (OpenJDK 25.0.2), Spring Boot 3.5.2, Gradle
-  - Dépendances : Spring Web, Spring Data JPA, H2, Lombok, Validation
-  - Package : be.vercauteren.accounting
-- **Frontend** : Angular 21.1, Node.js 24.13.1 (scoop: nodejs-lts), TypeScript, SCSS
-- **Note** : Node 24 est installé via scoop (`/c/Users/verca/scoop/apps/nodejs-lts/current`), le PATH doit le prioriser sur le Node 18 global
+- **Backend**: Java 25 (OpenJDK 25.0.2), Spring Boot 3.5.2, Gradle
+  - Dependencies: Spring Web, Spring Data JPA, H2, Lombok, Validation
+  - Package: be.vercauteren.accounting
+- **Frontend**: Angular 21.1, Node.js 24.13.1 (scoop: nodejs-lts), TypeScript, SCSS
+- **Note**: Node 24 is installed via scoop (`/c/Users/verca/scoop/apps/nodejs-lts/current`), PATH must prioritize it over the global Node 18
 
-### Renommage des fichiers
-- Format : `NNN-[date/période]-Fournisseur[-détail].pdf`
-- Numéro sur 3 chiffres avec zéros initiaux (001, 002, 003...)
-- Sous-numéros possibles pour factures multiples : 008.1, 008.2 (ex: 2 commandes Amazon)
-- La date/période dépend de la portée de la facture :
-  - Ponctuelle (restaurant, achat unique) : YYMMDD (ex: 250114)
-  - Mensuelle (abonnement) : YYMM (ex: 2501)
-  - Trimestrielle : YYYYQ# (ex: 2025Q2)
-  - Annuelle (assurance, abonnement annuel) : YYYY (ex: 2025)
-  - Absente dans certains cas
-- L'alias du Supplier est utilisé dans le nom du fichier (ex: "Café de la poste" → alias "CafeDeLaPoste")
-- Détail optionnel après le fournisseur (ex: PneuHiver, MachineACafe, UgreenHDMI)
-- Exemples : `001-Auto5-PneuHiver.pdf`, `003-2412-OliverJames.PDF`, `008.1-2601-AmazonUgreenHDMI.pdf`
+### File renaming
+- Format: `NNN-[date/period]-Supplier[-detail].pdf`
+- Number zero-padded to 3 digits (001, 002, 003...)
+- Sub-numbers possible for multiple invoices: 008.1, 008.2 (e.g. 2 Amazon orders)
+- The date/period depends on the invoice scope:
+  - One-time (restaurant, single purchase): YYMMDD (e.g. 250114)
+  - Monthly (subscription): YYMM (e.g. 2501)
+  - Quarterly: YYYYQ# (e.g. 2025Q2)
+  - Yearly (insurance, annual subscription): YYYY (e.g. 2025)
+  - Absent in some cases
+- The Supplier alias is used in the filename (e.g. "Cafe de la poste" -> alias "CafeDeLaPoste")
+- Optional detail after the supplier (e.g. PneuHiver, MachineACafe, UgreenHDMI)
+- Examples: `001-Auto5-PneuHiver.pdf`, `003-2412-OliverJames.PDF`, `008.1-2601-AmazonUgreenHDMI.pdf`
 
-### Stockage des fichiers
-- Upload direct de fichiers PDF depuis le formulaire de facture
-- Les fichiers sont renommés automatiquement via `FileNameGenerator` et sauvegardés dans un répertoire configurable (`app.upload.directory` dans `application.properties`)
-- Organisation en sous-dossiers par année : `{uploadDir}/{année}/{fichier.pdf}`
-- Endpoint dédié `POST /api/invoices/{id}/upload` (l'upload se fait après la création/modification car le nom dépend du numéro attribué)
-- `FileStorageService` gère le stockage/suppression des fichiers sur disque
-- Le frontend chaîne automatiquement l'upload après le save (create/update → upload via `switchMap`)
-- La base de données stocke le chemin complet vers le fichier dans `filePath`
-- Ancien stockage NAS (référence historique) :
-  - Avant 2026 : \\NAS\homes\VITe\{année}\Done\
-  - Depuis 2026 : \\NAS\homes\VITe\{année}\ (plus de sous-dossier Done)
+### File storage
+- Direct PDF file upload from the invoice form
+- Files are automatically renamed via `FileNameGenerator` and saved in a configurable directory (`app.upload.directory` in `application.properties`)
+- Organized in subdirectories by year: `{uploadDir}/{year}/{file.pdf}`
+- Dedicated endpoint `POST /api/invoices/{id}/upload` (upload happens after create/update since the filename depends on the assigned number)
+- `FileStorageService` handles file storage/deletion on disk
+- The frontend automatically chains the upload after save (create/update -> upload via `switchMap`)
+- The database stores the full file path in `filePath`
+- Legacy NAS storage (historical reference):
+  - Before 2026: \\NAS\homes\VITe\{year}\Done\
+  - Since 2026: \\NAS\homes\VITe\{year}\ (no more Done subfolder)
 
-### Base de données
-- Base de données légère (SQLite ou H2) — pas de serveur DB séparé
+### Database
+- Lightweight database (SQLite or H2) — no separate DB server
 
 ### Infrastructure
-- NAS actuel : Synology DS218play (ARM, 1 Go RAM, pas de Docker) — trop limité pour héberger l'app
-- NAS envisagé : Ugreen DXP4800 Plus (Intel x86, 8 Go DDR5, Docker supporté) — capable d'héberger l'app
-- Décision d'hébergement à confirmer selon le NAS final
-- En attendant, développement et tests en local sur PC
+- Current NAS: Synology DS218play (ARM, 1 GB RAM, no Docker) — too limited to host the app
+- Planned NAS: Ugreen DXP4800 Plus (Intel x86, 8 GB DDR5, Docker supported) — capable of hosting the app
+- Hosting decision to be confirmed based on final NAS choice
+- In the meantime, development and testing done locally on PC
 
-### Devise
-- Toujours en EUR, pas besoin de multi-devise
+### Currency
+- Always EUR, no multi-currency needed
 
-### Périmètre v1
-- Remplacer l'Excel : saisie et gestion des factures (CRUD)
-- Automatiser le renommage des fichiers PDF selon la numérotation
-- Upload de documents PDF lors de l'encodage de factures (renommage automatique, stockage par année)
-- Gestion par année avec numérotation séquentielle redémarrant à 1
+### v1 scope
+- Replace the Excel: invoice entry and management (CRUD)
+- Automate PDF file renaming based on numbering
+- PDF document upload during invoice encoding (automatic renaming, storage by year)
+- Year-based management with sequential numbering restarting at 1
 
-### Périmètre futur (hors v1)
-- Upload automatisé vers Falco (logiciel comptable)
-- Import automatique de factures depuis Gmail (pièces jointes PDF)
-- Stratégie de backup des fichiers PDF (backup NAS, copie vers périphérique réseau, etc. — à définir)
-- Autres automatisations à définir
+### Future scope (beyond v1)
+- Automated upload to Falco (accounting software)
+- Automatic invoice import from Gmail (PDF attachments)
+- PDF file backup strategy (NAS backup, copy to network device, etc. — TBD)
+- Other automations TBD
 
-## Modèle de données
+## Data model
 
 ### Invoice
-| Champ | Type | Description |
+| Field | Type | Description |
 |---|---|---|
-| id | Long | PK auto-générée |
-| number | Integer | Numéro d'ordre (001, 002...) |
-| subNumber | Integer (nullable) | Sous-numéro (1, 2 pour 008.1, 008.2) |
-| year | Integer | Année comptable |
-| type | Enum (PURCHASE, SALE) | Achat ou vente |
-| supplier | FK → Supplier | Le tiers concerné |
-| amountIncVat | BigDecimal (nullable) | Montant TTC |
-| amountExVat | BigDecimal (nullable) | Montant HTVA |
-| vatAmount | BigDecimal (nullable) | Montant TVA |
-| receptionDate | LocalDate | Date de réception |
-| paymentDate | LocalDate (nullable) | Date de paiement |
-| peppol | Boolean | Reçu via Peppol |
-| comment | String (nullable) | Commentaires |
-| filePath | String (nullable) | Chemin fichier sur le NAS |
-| dateScope | Enum (DAILY, MONTHLY, QUARTERLY, YEARLY, NONE) | Portée de la date pour le nommage |
-| scopeDate | LocalDate (nullable) | Date de référence pour le nommage (saisie manuelle, dépend du contenu de la facture) |
-| fileDetail | String (nullable) | Détail optionnel pour le nom du fichier (ex: "PneuHiver", "MachineACafe") |
+| id | Long | Auto-generated PK |
+| number | Integer | Sequential number (001, 002...) |
+| subNumber | Integer (nullable) | Sub-number (1, 2 for 008.1, 008.2) |
+| year | Integer | Accounting year |
+| type | Enum (PURCHASE, SALE) | Purchase or sale |
+| supplier | FK -> Supplier | The related party |
+| amountIncVat | BigDecimal (nullable) | Amount including VAT |
+| amountExVat | BigDecimal (nullable) | Amount excluding VAT |
+| vatAmount | BigDecimal (nullable) | VAT amount |
+| receptionDate | LocalDate | Reception date |
+| paymentDate | LocalDate (nullable) | Payment date |
+| peppol | Boolean | Received via Peppol |
+| comment | String (nullable) | Comments |
+| filePath | String (nullable) | File path on disk |
+| dateScope | Enum (DAILY, MONTHLY, QUARTERLY, YEARLY, NONE) | Date scope for file naming |
+| scopeDate | LocalDate (nullable) | Reference date for naming (manual input, depends on invoice content) |
+| fileDetail | String (nullable) | Optional detail for the filename (e.g. "PneuHiver", "MachineACafe") |
 
-Document manquant = filePath est null ET peppol est false.
+Missing document = filePath is null AND peppol is false.
 
-Nom de fichier généré = `{number padded 3}[.{subNumber}]-[{scopeDate formaté selon dateScope}]-{supplier.alias}[-{fileDetail}].pdf`
+Generated filename = `{number padded 3}[.{subNumber}]-[{scopeDate formatted by dateScope}]-{supplier.alias}[-{fileDetail}].pdf`
 
 ### Supplier
-| Champ | Type | Description |
+| Field | Type | Description |
 |---|---|---|
-| id | Long | PK auto-générée |
-| name | String | Nom officiel (ex: "P&Partners", "Café de la poste") |
-| alias | String (nullable) | Nom court pour le nommage fichier (ex: "PPartners", "CafeDeLaPoste") |
-| enterpriseNumber | String (nullable) | Numéro d'entreprise BCE (format 0XXX.XXX.XXX, optionnel) |
+| id | Long | Auto-generated PK |
+| name | String | Official name (e.g. "P&Partners", "Cafe de la poste") |
+| alias | String (nullable) | Short name for file naming (e.g. "PPartners", "CafeDeLaPoste") |
+| enterpriseNumber | String (nullable) | BCE enterprise number (format 0XXX.XXX.XXX, optional) |
