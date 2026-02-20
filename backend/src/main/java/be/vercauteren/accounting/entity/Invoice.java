@@ -86,4 +86,8 @@ public class Invoice {
     private LocalDate scopeDate;
 
     private String fileDetail;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
+    private User createdBy;
 }

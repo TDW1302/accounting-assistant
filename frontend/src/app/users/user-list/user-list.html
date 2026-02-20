@@ -1,0 +1,46 @@
+<div class="page-header">
+  <h1>Utilisateurs</h1>
+  <a routerLink="/users/new" class="btn btn-primary">Nouveau</a>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nom d'utilisateur</th>
+      <th>Email</th>
+      <th>Rôle</th>
+      <th>Statut</th>
+      <th>Créé le</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (user of users(); track user.id) {
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ user.email }}</td>
+        <td>
+          <span class="role-badge" [class]="'role-' + user.role.toLowerCase()">
+            {{ user.role }}
+          </span>
+        </td>
+        <td>
+          <span class="status-badge" [class.active]="user.enabled" [class.disabled]="!user.enabled">
+            {{ user.enabled ? 'Actif' : 'Désactivé' }}
+          </span>
+        </td>
+        <td>{{ user.createdAt | date:'dd/MM/yyyy' }}</td>
+        <td>
+          <div class="actions">
+            <a [routerLink]="['/users', user.id, 'edit']" class="btn btn-sm">Modifier</a>
+            <button class="btn btn-sm btn-danger" (click)="deleteUser(user)">Supprimer</button>
+          </div>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="6" class="empty">Aucun utilisateur trouvé</td>
+      </tr>
+    }
+  </tbody>
+</table>

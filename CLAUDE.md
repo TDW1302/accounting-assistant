@@ -37,7 +37,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 
 ### Technologies
 - **Backend**: Java 25 (OpenJDK 25.0.2), Spring Boot 3.5.2, Gradle
-  - Dependencies: Spring Web, Spring Data JPA, H2, Lombok, Validation, Apache PDFBox 3.0.4, Anthropic Java SDK 2.11.0
+  - Dependencies: Spring Web, Spring Data JPA, Spring Security, H2, Lombok, Validation, Apache PDFBox 3.0.4, Anthropic Java SDK 2.11.0
   - Package: be.vercauteren.accounting
 - **Frontend**: Angular 21.1, Node.js 24.13.1 (scoop: nodejs-lts), TypeScript, SCSS
 - **Note**: Node 24 is installed via scoop (`/c/Users/verca/scoop/apps/nodejs-lts/current`), PATH must prioritize it over the global Node 18
@@ -50,12 +50,14 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `entity/` — JPA entities (`@Entity`, Lombok `@Getter/@Setter/@Builder/@NoArgsConstructor/@AllArgsConstructor`)
 - `repository/` — Spring Data JPA (`JpaRepository`, `JpaSpecificationExecutor`)
 - `service/` — Business services (`@Service`, `@RequiredArgsConstructor`, `@Transactional`)
+- `security/` — Spring Security (`CustomUserDetails`, `CustomUserDetailsService`)
+- `config/` — Configuration (`SecurityConfig`, `AdminInitializer`)
 - `specification/` — JPA Specifications for dynamic search
 
 **Backend patterns**:
 - DTOs: Java records (not classes), separate Request/Response records
 - Entity↔DTO mapping: `toResponse()` methods directly in the Service (no external mapper)
-- Errors: `EntityNotFoundException` → `GlobalExceptionHandler` → 404 with `Map<String, String>`
+- Errors: `EntityNotFoundException` → 404, `IllegalArgumentException` → 400, `IllegalStateException` → 403 (via `GlobalExceptionHandler` → `Map<String, String>`)
 - Validation: Jakarta Validation annotations on DTO records
 - Auto-numbering: `findFirstByYearOrderByNumberDesc` + 1 (in `InvoiceService.create`)
 
@@ -64,10 +66,14 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `app/services/` — HTTP services (`@Injectable({ providedIn: 'root' })`, `inject(HttpClient)`)
 - `app/invoices/` — Invoice components (invoice-list, invoice-form)
 - `app/suppliers/` — Supplier components (supplier-list, supplier-form)
+- `app/auth/` — Auth components (login, register, change-password)
+- `app/users/` — User management components (user-list, user-form)
+- `app/guards/` — Route guards (`authGuard`, `roleGuard`)
+- `app/interceptors/` — HTTP interceptors (`authInterceptor` — withCredentials + 401 redirect)
 - Routing: lazy loading via `loadComponent` in `app.routes.ts`
 - State: Angular signals (`signal<T>()`)
 - Forms: `FormsModule` (template-driven) for lists, `ReactiveFormsModule` for form pages
-- Locale: `fr-BE`, `provideHttpClient()` without interceptors currently
+- Locale: `fr-BE`, `provideHttpClient(withInterceptors([authInterceptor]))`
 - UI: Custom CSS (no Material/PrimeNG), classes `.btn`, `.btn-primary`, `.form-group`, `.page-header`
 - Navbar: in `app.html` with `RouterLink`/`RouterLinkActive`
 
@@ -78,12 +84,29 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `POST /api/invoices/extract` — AI PDF extraction
 - `POST /api/invoices/{id}/upload` — file upload
 - `GET/POST/PUT/DELETE /api/suppliers/{id}` — supplier CRUD
+- `POST /api/auth/login` — login (returns AuthResponse with user + passwordExpired)
+- `POST /api/auth/register` — public registration (default role VIEWER)
+- `POST /api/auth/logout` — logout (invalidate session)
+- `GET /api/auth/me` — current user info
+- `POST /api/auth/change-password` — change password
+- `GET/POST/PUT/DELETE /api/users/{id}` — user CRUD (ADMIN only)
 
 **Configuration** (`application.properties`):
 - H2 persistent file: `jdbc:h2:file:./data/accounting`
 - DDL auto: `update` (Hibernate manages the schema)
-- No Spring Security currently
+- Spring Security: session/cookie auth, BCrypt passwords, CSRF disabled
 - No Spring profiles (dev/prod) currently
+
+### Authentication & Authorization
+- **Auth mechanism**: Session + Cookie (Spring Security)
+- **Password hashing**: BCrypt (salt included)
+- **Password expiration**: 3 months — user redirected to change-password page when expired
+- **Roles**: ADMIN (full access), USER (CRUD invoices/suppliers), VIEWER (read-only)
+- **Public endpoints**: `/api/auth/login`, `/api/auth/register`
+- **Registration**: public, immediate access, default role VIEWER
+- **Admin initial**: created at startup from `application.properties` (`app.admin.username/password/email`)
+- **Session timeout**: 30 minutes
+- **Invoice tracking**: `createdBy` field on Invoice (nullable for existing data)
 
 ### File renaming
 - Format: `NNN-[date/period]-Supplier[-detail].pdf`
@@ -138,6 +161,8 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - PDF document upload during invoice encoding (automatic renaming, storage by year)
 - Year-based management with sequential numbering restarting at 1
 - AI-powered PDF invoice data extraction (auto-fill form from uploaded PDF)
+- User authentication (session/cookie) with role-based access control (ADMIN, USER, VIEWER)
+- User management (CRUD, admin only) with password expiration (3 months)
 
 ### Future scope (beyond v1)
 - Automated upload to Falco (accounting software) — API confirmed available:
@@ -174,6 +199,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 | dateScope | Enum (DAILY, MONTHLY, QUARTERLY, YEARLY, NONE) | Date scope for file naming |
 | scopeDate | LocalDate (nullable) | Reference date for naming (manual input, depends on invoice content) |
 | fileDetail | String (nullable) | Optional detail for the filename (e.g. "PneuHiver", "MachineACafe") |
+| createdBy | FK -> User (nullable) | User who created the invoice |
 
 Missing document = filePath is null AND peppol is false.
 
@@ -186,3 +212,16 @@ Generated filename = `{number padded 3}[.{subNumber}]-[{scopeDate formatted by d
 | name | String | Official name (e.g. "P&Partners", "Cafe de la poste") |
 | alias | String (nullable) | Short name for file naming (e.g. "PPartners", "CafeDeLaPoste") |
 | enterpriseNumber | String (nullable) | BCE enterprise number (format 0XXX.XXX.XXX, optional) |
+
+### User
+| Field | Type | Description |
+|---|---|---|
+| id | Long | Auto-generated PK |
+| username | String (unique) | Login username |
+| email | String (unique) | User email |
+| password | String | BCrypt-hashed password |
+| role | Enum (ADMIN, USER, VIEWER) | User role |
+| enabled | Boolean | Account active/disabled |
+| passwordChangedAt | LocalDateTime | Last password change |
+| passwordExpiresAt | LocalDateTime | Password expiration date (3 months after change) |
+| createdAt | LocalDateTime | Account creation date |

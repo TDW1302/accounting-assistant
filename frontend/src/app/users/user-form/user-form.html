@@ -1,0 +1,47 @@
+<div class="page-header">
+  <h1>{{ isEdit ? 'Modifier' : 'Nouvel' }} utilisateur</h1>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  @if (!isEdit) {
+    <div class="form-group">
+      <label for="username">Nom d'utilisateur</label>
+      <input id="username" type="text" formControlName="username" placeholder="Nom d'utilisateur">
+    </div>
+  }
+
+  <div class="form-group">
+    <label for="email">Email</label>
+    <input id="email" type="email" formControlName="email" placeholder="email@example.com">
+  </div>
+
+  @if (!isEdit) {
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input id="password" type="password" formControlName="password" placeholder="Min. 6 caractères">
+    </div>
+  }
+
+  <div class="form-group">
+    <label for="role">Rôle</label>
+    <select id="role" formControlName="role">
+      <option value="ADMIN">Admin</option>
+      <option value="USER">Utilisateur</option>
+      <option value="VIEWER">Lecteur</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>
+      <input type="checkbox" formControlName="enabled">
+      Compte actif
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+      {{ isEdit ? 'Modifier' : 'Créer' }}
+    </button>
+    <a routerLink="/users" class="btn">Annuler</a>
+  </div>
+</form>

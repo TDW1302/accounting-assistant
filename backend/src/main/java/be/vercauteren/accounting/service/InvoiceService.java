@@ -11,7 +11,11 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import be.vercauteren.accounting.entity.User;
+import be.vercauteren.accounting.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -91,6 +95,7 @@ public class InvoiceService {
             .dateScope(request.dateScope())
             .scopeDate(request.scopeDate())
             .fileDetail(request.fileDetail())
+            .createdBy(getCurrentUser())
             .build();
 
         return toResponse(invoiceRepository.save(invoice));
@@ -141,6 +146,14 @@ public class InvoiceService {
             throw new EntityNotFoundException("Invoice not found: " + id);
         }
         invoiceRepository.deleteById(id);
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
+            return userDetails.getUser();
+        }
+        return null;
     }
 
     private Invoice getOrThrow(Long id) {

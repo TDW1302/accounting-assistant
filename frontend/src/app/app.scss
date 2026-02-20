@@ -32,6 +32,43 @@
   }
 }
 
+.nav-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .username {
+    color: #cbd5e1;
+    font-weight: 500;
+  }
+
+  a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.875rem;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+
+  &:hover {
+    color: #fff;
+    border-color: #94a3b8;
+  }
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
