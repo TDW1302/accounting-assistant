@@ -37,10 +37,53 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 
 ### Technologies
 - **Backend**: Java 25 (OpenJDK 25.0.2), Spring Boot 3.5.2, Gradle
-  - Dependencies: Spring Web, Spring Data JPA, H2, Lombok, Validation
+  - Dependencies: Spring Web, Spring Data JPA, H2, Lombok, Validation, Apache PDFBox 3.0.4, Anthropic Java SDK 2.11.0
   - Package: be.vercauteren.accounting
 - **Frontend**: Angular 21.1, Node.js 24.13.1 (scoop: nodejs-lts), TypeScript, SCSS
 - **Note**: Node 24 is installed via scoop (`/c/Users/verca/scoop/apps/nodejs-lts/current`), PATH must prioritize it over the global Node 18
+
+### Architecture & Patterns
+
+**Backend structure** (package `be.vercauteren.accounting`):
+- `controller/` — REST controllers (`@RestController`, `@RequestMapping("/api/...")`, `@RequiredArgsConstructor`)
+- `dto/` — Java records for Request/Response (validation via `@NotNull`, `@NotBlank`)
+- `entity/` — JPA entities (`@Entity`, Lombok `@Getter/@Setter/@Builder/@NoArgsConstructor/@AllArgsConstructor`)
+- `repository/` — Spring Data JPA (`JpaRepository`, `JpaSpecificationExecutor`)
+- `service/` — Business services (`@Service`, `@RequiredArgsConstructor`, `@Transactional`)
+- `specification/` — JPA Specifications for dynamic search
+
+**Backend patterns**:
+- DTOs: Java records (not classes), separate Request/Response records
+- Entity↔DTO mapping: `toResponse()` methods directly in the Service (no external mapper)
+- Errors: `EntityNotFoundException` → `GlobalExceptionHandler` → 404 with `Map<String, String>`
+- Validation: Jakarta Validation annotations on DTO records
+- Auto-numbering: `findFirstByYearOrderByNumberDesc` + 1 (in `InvoiceService.create`)
+
+**Frontend structure** (Angular 21, standalone components):
+- `app/models/` — TypeScript interfaces + types (Invoice, Supplier, InvoiceRequest...)
+- `app/services/` — HTTP services (`@Injectable({ providedIn: 'root' })`, `inject(HttpClient)`)
+- `app/invoices/` — Invoice components (invoice-list, invoice-form)
+- `app/suppliers/` — Supplier components (supplier-list, supplier-form)
+- Routing: lazy loading via `loadComponent` in `app.routes.ts`
+- State: Angular signals (`signal<T>()`)
+- Forms: `FormsModule` (template-driven) for lists, `ReactiveFormsModule` for form pages
+- Locale: `fr-BE`, `provideHttpClient()` without interceptors currently
+- UI: Custom CSS (no Material/PrimeNG), classes `.btn`, `.btn-primary`, `.form-group`, `.page-header`
+- Navbar: in `app.html` with `RouterLink`/`RouterLinkActive`
+
+**API endpoints**:
+- `GET /api/invoices?year=` — list by year
+- `GET /api/invoices/search?...` — multi-criteria search
+- `GET/POST/PUT/DELETE /api/invoices/{id}` — CRUD
+- `POST /api/invoices/extract` — AI PDF extraction
+- `POST /api/invoices/{id}/upload` — file upload
+- `GET/POST/PUT/DELETE /api/suppliers/{id}` — supplier CRUD
+
+**Configuration** (`application.properties`):
+- H2 persistent file: `jdbc:h2:file:./data/accounting`
+- DDL auto: `update` (Hibernate manages the schema)
+- No Spring Security currently
+- No Spring profiles (dev/prod) currently
 
 ### File renaming
 - Format: `NNN-[date/period]-Supplier[-detail].pdf`
@@ -68,6 +111,15 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
   - Before 2026: \\NAS\homes\VITe\{year}\Done\
   - Since 2026: \\NAS\homes\VITe\{year}\ (no more Done subfolder)
 
+### AI-powered invoice extraction
+- When adding a new invoice, selecting a PDF triggers automatic data extraction via Claude API
+- Flow: PDF text extracted with PDFBox → sent to Claude with known supplier list → structured JSON response → form pre-filled
+- Endpoint: `POST /api/invoices/extract` (multipart file upload)
+- `InvoiceExtractionService` orchestrates extraction, Claude API call, and supplier matching (by enterprise number, then name/alias)
+- Best-effort: failures are silent, user can always fill the form manually
+- Configuration: `app.anthropic.api-key` (from `ANTHROPIC_API_KEY` env var), `app.anthropic.model` in `application.properties`
+- Scanned/image PDFs return empty text → graceful fallback (no extraction, no error)
+
 ### Database
 - Lightweight database (SQLite or H2) — no separate DB server
 
@@ -85,11 +137,19 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - Automate PDF file renaming based on numbering
 - PDF document upload during invoice encoding (automatic renaming, storage by year)
 - Year-based management with sequential numbering restarting at 1
+- AI-powered PDF invoice data extraction (auto-fill form from uploaded PDF)
 
 ### Future scope (beyond v1)
-- Automated upload to Falco (accounting software)
+- Automated upload to Falco (accounting software) — API confirmed available:
+  - API docs: https://docs.falco-app.be/docs/getting-started
+  - Developer portal: https://dev.falco-app.be
+  - Auth: Bearer Token + `X-Falco-Application-Id` + `X-Falco-App-Secret`
+  - Supports: PDF upload with metadata, UBL upload, Peppol sending, delivery status tracking
+  - Falco does NOT extract data from PDFs — all fields must be provided in the request
+  - Sandbox environment available for testing
 - Automatic invoice import from Gmail (PDF attachments)
 - PDF file backup strategy (NAS backup, copy to network device, etc. — TBD)
+- Batch invoice upload: upload multiple PDFs at once, each creating a separate invoice (with AI extraction per file)
 - Other automations TBD
 
 ## Data model
