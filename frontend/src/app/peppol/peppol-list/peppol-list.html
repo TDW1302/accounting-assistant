@@ -55,10 +55,8 @@
           <td>
             @if (doc.alreadyImported) {
               <span class="badge-imported">Importé</span>
-            } @else if (doc.matchedSupplierId) {
-              <span class="badge-matched">À importer</span>
             } @else {
-              <span class="badge-unknown">Fournisseur inconnu</span>
+              <span class="badge-matched">À importer</span>
             }
           </td>
           <td class="actions">
