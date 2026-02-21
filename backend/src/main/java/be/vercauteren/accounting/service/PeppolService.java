@@ -37,7 +37,16 @@ public class PeppolService {
             return List.of();
         }
 
-        List<String> falcoIds = response.data().stream()
+        List<FalcoInboundDocument> documents = response.data();
+        if (senderName != null && !senderName.isBlank()) {
+            String filter = senderName.toLowerCase();
+            documents = documents.stream()
+                .filter(doc -> doc.senderName() != null
+                    && doc.senderName().toLowerCase().contains(filter))
+                .toList();
+        }
+
+        List<String> falcoIds = documents.stream()
             .map(FalcoInboundDocument::id)
             .toList();
 
@@ -47,7 +56,7 @@ public class PeppolService {
 
         List<Supplier> suppliers = supplierRepository.findAll();
 
-        return response.data().stream()
+        return documents.stream()
             .map(doc -> toResponse(doc, importedIds.contains(doc.id()), suppliers))
             .toList();
     }
