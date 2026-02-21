@@ -57,7 +57,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 **Backend patterns**:
 - DTOs: Java records (not classes), separate Request/Response records
 - Entity↔DTO mapping: `toResponse()` methods directly in the Service (no external mapper)
-- Errors: `EntityNotFoundException` → 404, `IllegalArgumentException` → 400, `IllegalStateException` → 403 (via `GlobalExceptionHandler` → `Map<String, String>`)
+- Errors: `EntityNotFoundException` → 404, `IllegalArgumentException` → 400, `IllegalStateException` → 403, `FalcoApiException` → 502 (via `GlobalExceptionHandler` → `Map<String, String>`)
 - Validation: Jakarta Validation annotations on DTO records
 - Auto-numbering: `findFirstByYearOrderByNumberDesc` + 1 (in `InvoiceService.create`)
 
@@ -65,6 +65,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `app/models/` — TypeScript interfaces + types (Invoice, Supplier, InvoiceRequest...)
 - `app/services/` — HTTP services (`@Injectable({ providedIn: 'root' })`, `inject(HttpClient)`)
 - `app/invoices/` — Invoice components (invoice-list, invoice-form)
+- `app/peppol/` — Peppol components (peppol-list)
 - `app/suppliers/` — Supplier components (supplier-list, supplier-form)
 - `app/auth/` — Auth components (login, register, change-password)
 - `app/users/` — User management components (user-list, user-form)
@@ -83,6 +84,8 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `GET/POST/PUT/DELETE /api/invoices/{id}` — CRUD
 - `POST /api/invoices/extract` — AI PDF extraction
 - `POST /api/invoices/{id}/upload` — file upload
+- `GET /api/peppol/inbound` — list Peppol documents from Falco (with enrichment)
+- `POST /api/peppol/import` — import a Peppol document as an invoice
 - `GET/POST/PUT/DELETE /api/suppliers/{id}` — supplier CRUD
 - `POST /api/auth/login` — login (returns AuthResponse with user + passwordExpired)
 - `POST /api/auth/register` — public registration (default role VIEWER)
@@ -95,6 +98,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - H2 persistent file: `jdbc:h2:file:./data/accounting`
 - DDL auto: `update` (Hibernate manages the schema)
 - Spring Security: session/cookie auth, BCrypt passwords, CSRF disabled
+- Falco API: `app.falco.api-key` (from `FALCO_API_KEY` env var), `app.falco.app-secret` (from `FALCO_APP_SECRET` env var), `app.falco.base-url`
 - No Spring profiles (dev/prod) currently
 
 ### Authentication & Authorization
@@ -143,6 +147,18 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - Configuration: `app.anthropic.api-key` (from `ANTHROPIC_API_KEY` env var), `app.anthropic.model` in `application.properties`
 - Scanned/image PDFs return empty text → graceful fallback (no extraction, no error)
 
+### Falco Peppol integration
+- Backend proxies the Falco API to list inbound Peppol documents and import them as invoices
+- `FalcoApiClient` — RestClient-based HTTP client for Falco API (`GET /peppol/inbound`), configured via `@Value` + `@PostConstruct`
+- `PeppolService` — Orchestration: enriches Falco documents with supplier matching (VAT number normalization, digits-only) and duplicate detection (`falcoDocumentId`)
+- `PeppolController` — `GET /api/peppol/inbound` (proxy + enrichment), `POST /api/peppol/import` (creates invoice via `InvoiceService.create`)
+- Import creates a standard Invoice with `peppol=true`, `falcoDocumentId` set, and `receptionDate=today`
+- Duplicate prevention: `falcoDocumentId` is unique on Invoice entity; `existsByFalcoDocumentId` check before import
+- Falco API auth: `X-Falco-Api-Key` + `X-Falco-App-Secret` headers
+- Falco API response uses snake_case: mapped via `@JsonProperty` on `FalcoInboundDocument` record
+- Frontend: dedicated `/peppol` page with filtering (date range, sender name), status badges (Imported/Matched/Unknown), and inline import form with supplier pre-selection
+- No UBL file download for now (document stays in Falco)
+
 ### Database
 - Lightweight database (SQLite or H2) — no separate DB server
 
@@ -163,12 +179,13 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - AI-powered PDF invoice data extraction (auto-fill form from uploaded PDF)
 - User authentication (session/cookie) with role-based access control (ADMIN, USER, VIEWER)
 - User management (CRUD, admin only) with password expiration (3 months)
+- Falco Peppol integration: list and import inbound Peppol documents with supplier matching and duplicate detection
 
 ### Future scope (beyond v1)
-- Automated upload to Falco (accounting software) — API confirmed available:
+- Automated upload to Falco (accounting software) — outbound invoice sending:
   - API docs: https://docs.falco-app.be/docs/getting-started
   - Developer portal: https://dev.falco-app.be
-  - Auth: Bearer Token + `X-Falco-Application-Id` + `X-Falco-App-Secret`
+  - Auth: `X-Falco-Api-Key` + `X-Falco-App-Secret` headers
   - Supports: PDF upload with metadata, UBL upload, Peppol sending, delivery status tracking
   - Falco does NOT extract data from PDFs — all fields must be provided in the request
   - Sandbox environment available for testing
@@ -200,6 +217,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 | scopeDate | LocalDate (nullable) | Reference date for naming (manual input, depends on invoice content) |
 | fileDetail | String (nullable) | Optional detail for the filename (e.g. "PneuHiver", "MachineACafe") |
 | createdBy | FK -> User (nullable) | User who created the invoice |
+| falcoDocumentId | String (nullable, unique) | Falco document ID for Peppol import deduplication |
 
 Missing document = filePath is null AND peppol is false.
 
