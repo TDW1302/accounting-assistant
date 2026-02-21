@@ -23,5 +23,6 @@ public record InvoiceResponse(
     DateScope dateScope,
     LocalDate scopeDate,
     String fileDetail,
-    String generatedFileName
+    String generatedFileName,
+    String falcoDocumentId
 ) {}

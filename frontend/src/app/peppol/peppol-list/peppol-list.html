@@ -1,0 +1,138 @@
+<div class="page-header">
+  <h1>Documents Peppol</h1>
+</div>
+
+<div class="search-bar">
+  <div class="search-row">
+    <div class="search-field">
+      <label>Reçu après</label>
+      <input type="date" [(ngModel)]="receivedAfter">
+    </div>
+    <div class="search-field">
+      <label>Reçu avant</label>
+      <input type="date" [(ngModel)]="receivedBefore">
+    </div>
+    <div class="search-field">
+      <label>Expéditeur</label>
+      <input type="text" [(ngModel)]="senderName" placeholder="Nom expéditeur..." (keyup.enter)="load()">
+    </div>
+  </div>
+  <div class="search-actions">
+    <button class="btn btn-primary" (click)="load()">Filtrer</button>
+    <button class="btn btn-secondary" (click)="resetFilters()">Réinitialiser</button>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <p class="loading-text">Chargement...</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>Date réception</th>
+        <th>Date facture</th>
+        <th>Expéditeur</th>
+        <th>N° TVA</th>
+        <th class="text-right">Montant</th>
+        <th>Référence</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (doc of documents(); track doc.id) {
+        <tr [class.imported-row]="doc.alreadyImported">
+          <td>{{ doc.receivedAt | date:'dd/MM/yyyy' }}</td>
+          <td>{{ doc.invoiceDate | date:'dd/MM/yyyy' }}</td>
+          <td>{{ doc.senderName }}</td>
+          <td class="mono">{{ doc.senderVatNumber }}</td>
+          <td class="text-right">{{ doc.amount | currency:'EUR':'symbol':'1.2-2' }}</td>
+          <td>{{ doc.invoiceReference }}</td>
+          <td>
+            @if (doc.alreadyImported) {
+              <span class="badge-imported">Importé</span>
+            } @else if (doc.matchedSupplierId) {
+              <span class="badge-matched">{{ doc.matchedSupplierName }}</span>
+            } @else {
+              <span class="badge-unknown">Inconnu</span>
+            }
+          </td>
+          <td class="actions">
+            @if (!doc.alreadyImported) {
+              <button class="btn btn-sm btn-primary" (click)="toggleImport(doc)">
+                {{ expandedDocId === doc.id ? 'Annuler' : 'Importer' }}
+              </button>
+            }
+          </td>
+        </tr>
+        @if (expandedDocId === doc.id) {
+          <tr class="import-form-row">
+            <td colspan="8">
+              <div class="import-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Fournisseur</label>
+                    <select [(ngModel)]="importSupplierId" required>
+                      <option [ngValue]="null">-- Sélectionner --</option>
+                      @for (s of suppliers(); track s.id) {
+                        <option [ngValue]="s.id">{{ s.name }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Année</label>
+                    <input type="number" [(ngModel)]="importYear" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Type</label>
+                    <select [(ngModel)]="importType">
+                      <option value="PURCHASE">Achat</option>
+                      <option value="SALE">Vente</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Portée date</label>
+                    <select [(ngModel)]="importDateScope">
+                      <option value="NONE">Aucune</option>
+                      <option value="DAILY">Journalière</option>
+                      <option value="MONTHLY">Mensuelle</option>
+                      <option value="QUARTERLY">Trimestrielle</option>
+                      <option value="YEARLY">Annuelle</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Date scope</label>
+                    <input type="date" [(ngModel)]="importScopeDate">
+                  </div>
+                  <div class="form-group">
+                    <label>Détail fichier</label>
+                    <input type="text" [(ngModel)]="importFileDetail" placeholder="Ex: MachineACafe">
+                  </div>
+                  <div class="form-group">
+                    <label>Commentaire</label>
+                    <input type="text" [(ngModel)]="importComment">
+                  </div>
+                  <div class="form-group form-actions">
+                    <button class="btn btn-primary" (click)="confirmImport(doc)" [disabled]="importing || !importSupplierId">
+                      {{ importing ? 'Import en cours...' : 'Confirmer l\'import' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        }
+      } @empty {
+        <tr>
+          <td colspan="8" class="empty">Aucun document Peppol trouvé.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

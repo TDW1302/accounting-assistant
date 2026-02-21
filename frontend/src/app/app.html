@@ -3,6 +3,7 @@
     <a class="nav-brand" routerLink="/invoices">Comptabilité</a>
     <div class="nav-links">
       <a routerLink="/invoices" routerLinkActive="active">Factures</a>
+      <a routerLink="/peppol" routerLinkActive="active">Peppol</a>
       <a routerLink="/suppliers" routerLinkActive="active">Fournisseurs</a>
       @if (authService.hasRole('ADMIN')) {
         <a routerLink="/users" routerLinkActive="active">Utilisateurs</a>

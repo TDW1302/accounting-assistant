@@ -27,6 +27,11 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
   },
   {
+    path: 'peppol',
+    loadComponent: () => import('./peppol/peppol-list/peppol-list').then(m => m.PeppolList),
+    canActivate: [authGuard]
+  },
+  {
     path: 'suppliers',
     loadComponent: () => import('./suppliers/supplier-list/supplier-list').then(m => m.SupplierList),
     canActivate: [authGuard]

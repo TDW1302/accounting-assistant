@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/peppol/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/peppol/**").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/invoices/**", "/api/suppliers/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/invoices/**", "/api/suppliers/**").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.PUT, "/api/invoices/**", "/api/suppliers/**").hasAnyRole("ADMIN", "USER")

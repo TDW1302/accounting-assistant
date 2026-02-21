@@ -90,4 +90,7 @@ public class Invoice {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
     private User createdBy;
+
+    @Column(unique = true)
+    private String falcoDocumentId;
 }

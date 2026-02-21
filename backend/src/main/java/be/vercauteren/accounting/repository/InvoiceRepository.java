@@ -11,4 +11,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     List<Invoice> findByYearOrderByNumberAscSubNumberAsc(Integer year);
 
     Optional<Invoice> findFirstByYearOrderByNumberDesc(Integer year);
+
+    boolean existsByFalcoDocumentId(String falcoDocumentId);
+
+    List<Invoice> findByFalcoDocumentIdIn(List<String> falcoDocumentIds);
 }

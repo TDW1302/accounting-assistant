@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { switchMap } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
@@ -9,7 +9,7 @@ import { InvoiceRequest, DateScope, InvoiceType } from '../../models/invoice.mod
 
 @Component({
   selector: 'app-invoice-form',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './invoice-form.html',
   styleUrl: './invoice-form.scss'
 })
@@ -26,6 +26,7 @@ export class InvoiceForm implements OnInit {
   invoiceId?: number;
   selectedFile: File | null = null;
   existingFilePath: string | null = null;
+  autoExtract = true;
   extracting = false;
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
@@ -91,7 +92,7 @@ export class InvoiceForm implements OnInit {
     const input = event.target as HTMLInputElement;
     this.selectedFile = input.files?.[0] ?? null;
 
-    if (this.selectedFile && !this.isEdit) {
+    if (this.selectedFile && !this.isEdit && this.autoExtract) {
       this.extracting = true;
       this.invoiceService.extract(this.selectedFile).subscribe({
         next: (result) => {

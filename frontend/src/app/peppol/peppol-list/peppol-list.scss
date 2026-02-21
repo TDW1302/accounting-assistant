@@ -1,0 +1,154 @@
+.search-bar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  .search-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .search-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 140px;
+
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    input, select {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      background: #fff;
+    }
+  }
+
+  .search-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+}
+
+.alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.loading-text {
+  text-align: center;
+  color: #64748b;
+  padding: 2rem;
+}
+
+.imported-row {
+  opacity: 0.5;
+  background: #f1f5f9;
+}
+
+.badge-imported {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-matched {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-unknown {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.import-form-row {
+  background: #f8fafc;
+
+  td {
+    padding: 0 !important;
+  }
+}
+
+.import-form {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 0.75rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 140px;
+
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    input, select {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      background: #fff;
+    }
+
+    &.form-actions {
+      justify-content: flex-end;
+    }
+  }
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 2rem !important;
+}

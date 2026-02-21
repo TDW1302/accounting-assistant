@@ -92,6 +92,12 @@
     <label>Fichier PDF</label>
     <div class="file-upload">
       <input type="file" accept=".pdf" (change)="onFileSelected($event)">
+      @if (!isEdit) {
+        <label class="auto-extract-toggle">
+          <input type="checkbox" [(ngModel)]="autoExtract" [ngModelOptions]="{standalone: true}">
+          Extraction automatique (IA)
+        </label>
+      }
       @if (extracting) {
         <span class="extracting">Extraction des données en cours...</span>
       }

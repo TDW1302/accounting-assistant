@@ -22,6 +22,7 @@ export interface Invoice {
   scopeDate: string | null;
   fileDetail: string | null;
   generatedFileName: string;
+  falcoDocumentId: string | null;
 }
 
 export interface InvoiceExtractionResult {

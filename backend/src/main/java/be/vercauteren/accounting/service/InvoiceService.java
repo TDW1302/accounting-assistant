@@ -95,6 +95,7 @@ public class InvoiceService {
             .dateScope(request.dateScope())
             .scopeDate(request.scopeDate())
             .fileDetail(request.fileDetail())
+            .falcoDocumentId(request.falcoDocumentId())
             .createdBy(getCurrentUser())
             .build();
 
@@ -180,7 +181,8 @@ public class InvoiceService {
             invoice.getDateScope(),
             invoice.getScopeDate(),
             invoice.getFileDetail(),
-            fileNameGenerator.generate(invoice)
+            fileNameGenerator.generate(invoice),
+            invoice.getFalcoDocumentId()
         );
     }
 }

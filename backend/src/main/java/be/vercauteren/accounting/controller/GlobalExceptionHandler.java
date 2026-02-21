@@ -1,5 +1,6 @@
 package be.vercauteren.accounting.controller;
 
+import be.vercauteren.accounting.service.FalcoApiClient.FalcoApiException;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Map<String, String> handleForbidden(IllegalStateException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(FalcoApiException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public Map<String, String> handleFalcoApi(FalcoApiException ex) {
         return Map.of("error", ex.getMessage());
     }
 }
