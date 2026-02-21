@@ -86,6 +86,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - `POST /api/invoices/{id}/upload` — file upload
 - `GET /api/peppol/inbound` — list Peppol documents from Falco (with enrichment)
 - `POST /api/peppol/import` — import a Peppol document as an invoice
+- `POST /api/peppol/import-suppliers` — import suppliers from Falco Peppol senders
 - `GET/POST/PUT/DELETE /api/suppliers/{id}` — supplier CRUD
 - `POST /api/auth/login` — login (returns AuthResponse with user + passwordExpired)
 - `POST /api/auth/register` — public registration (default role VIEWER)
@@ -156,7 +157,12 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - Duplicate prevention: `falcoDocumentId` is unique on Invoice entity; `existsByFalcoDocumentId` check before import
 - Falco API auth: `X-Falco-Api-Key` + `X-Falco-App-Secret` headers
 - Falco API response uses snake_case: mapped via `@JsonProperty` on `FalcoInboundDocument` record
-- Frontend: dedicated `/peppol` page with filtering (date range, sender name), status badges (Imported/Matched/Unknown), and inline import form with supplier pre-selection
+- Client-side sender name filtering (Falco sandbox ignores `sender_name` query param)
+- Frontend: dedicated `/peppol` page with filtering (date range, sender name), status badges (Importé/À importer), and inline import form with supplier pre-selection
+- Supplier import from Falco: extracts unique senders from inbound Peppol documents and creates/updates Supplier entities
+  - Matching by VAT number (digits-only normalization)
+  - On duplicate: Falco data wins for name; alias kept from existing if Falco doesn't provide one
+  - Endpoint: `POST /api/peppol/import-suppliers`
 - No UBL file download for now (document stays in Falco)
 
 ### Database

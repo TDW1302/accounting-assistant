@@ -12,6 +12,8 @@ import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -117,17 +119,72 @@ public class PeppolService {
         );
     }
 
-    private Supplier matchSupplier(String vatNumber, List<Supplier> suppliers) {
+    public List<Supplier> importSuppliers() {
+        FalcoInboundListResponse response = falcoApiClient.listInbound(null, null, null, 0, 200);
+
+        if (response.data() == null || response.data().isEmpty()) {
+            return List.of();
+        }
+
+        // Deduplicate senders by normalized VAT number, keeping the first occurrence
+        Map<String, FalcoInboundDocument> uniqueSenders = new LinkedHashMap<>();
+        for (FalcoInboundDocument doc : response.data()) {
+            String vat = normalizeVat(doc.senderVatNumber());
+            if (vat != null && !uniqueSenders.containsKey(vat)) {
+                uniqueSenders.put(vat, doc);
+            }
+        }
+
+        List<Supplier> existingSuppliers = supplierRepository.findAll();
+        Map<String, Supplier> existingByVat = existingSuppliers.stream()
+            .filter(s -> normalizeVat(s.getEnterpriseNumber()) != null)
+            .collect(Collectors.toMap(
+                s -> normalizeVat(s.getEnterpriseNumber()),
+                s -> s,
+                (a, b) -> a
+            ));
+
+        List<Supplier> result = new ArrayList<>();
+        for (var entry : uniqueSenders.entrySet()) {
+            String normalizedVat = entry.getKey();
+            FalcoInboundDocument doc = entry.getValue();
+
+            Supplier existing = existingByVat.get(normalizedVat);
+            if (existing != null) {
+                existing.setName(doc.senderName());
+                if (existing.getAlias() == null || existing.getAlias().isBlank()) {
+                    existing.setAlias(null);
+                }
+                existing.setEnterpriseNumber(doc.senderVatNumber());
+                result.add(supplierRepository.save(existing));
+            } else {
+                Supplier created = supplierRepository.save(Supplier.builder()
+                    .name(doc.senderName())
+                    .enterpriseNumber(doc.senderVatNumber())
+                    .build());
+                result.add(created);
+                existingByVat.put(normalizedVat, created);
+            }
+        }
+
+        return result;
+    }
+
+    private String normalizeVat(String vatNumber) {
         if (vatNumber == null || vatNumber.isBlank()) {
             return null;
         }
         String normalized = vatNumber.replaceAll("[^0-9]", "");
-        if (normalized.isEmpty()) {
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private Supplier matchSupplier(String vatNumber, List<Supplier> suppliers) {
+        String normalized = normalizeVat(vatNumber);
+        if (normalized == null) {
             return null;
         }
         return suppliers.stream()
-            .filter(s -> s.getEnterpriseNumber() != null
-                && s.getEnterpriseNumber().replaceAll("[^0-9]", "").equals(normalized))
+            .filter(s -> normalized.equals(normalizeVat(s.getEnterpriseNumber())))
             .findFirst()
             .orElse(null);
     }

@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PeppolDocument, PeppolImportRequest } from '../models/peppol.model';
 import { Invoice } from '../models/invoice.model';
+import { Supplier } from '../models/supplier.model';
 
 @Injectable({ providedIn: 'root' })
 export class PeppolService {
@@ -21,5 +22,9 @@ export class PeppolService {
 
   importDocument(request: PeppolImportRequest): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.url}/import`, request);
+  }
+
+  importSuppliers(): Observable<Supplier[]> {
+    return this.http.post<Supplier[]>(`${this.url}/import-suppliers`, {});
   }
 }

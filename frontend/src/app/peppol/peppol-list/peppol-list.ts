@@ -37,6 +37,7 @@ export class PeppolList implements OnInit {
   importFileDetail = '';
   importComment = '';
   importing = false;
+  importingSuppliers = false;
 
   ngOnInit(): void {
     this.supplierService.list().subscribe(data => this.suppliers.set(data));
@@ -83,6 +84,22 @@ export class PeppolList implements OnInit {
     this.importScopeDate = '';
     this.importFileDetail = '';
     this.importComment = '';
+  }
+
+  importSuppliers(): void {
+    this.importingSuppliers = true;
+    this.error.set(null);
+    this.peppolService.importSuppliers().subscribe({
+      next: (suppliers) => {
+        this.importingSuppliers = false;
+        this.supplierService.list().subscribe(data => this.suppliers.set(data));
+        this.load();
+      },
+      error: () => {
+        this.importingSuppliers = false;
+        this.error.set('Erreur lors de l\'import des fournisseurs.');
+      }
+    });
   }
 
   confirmImport(doc: PeppolDocument): void {
