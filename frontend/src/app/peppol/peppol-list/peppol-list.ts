@@ -114,7 +114,9 @@ export class PeppolList implements OnInit {
       dateScope: this.importDateScope,
       scopeDate: this.importScopeDate || null,
       fileDetail: this.importFileDetail || null,
-      comment: this.importComment || null
+      comment: this.importComment || null,
+      amountIncVat: doc.amount,
+      receptionDate: doc.receivedAt
     };
 
     this.peppolService.importDocument(request).subscribe({

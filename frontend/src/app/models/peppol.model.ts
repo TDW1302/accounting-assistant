@@ -25,4 +25,6 @@ export interface PeppolImportRequest {
   scopeDate: string | null;
   fileDetail: string | null;
   comment: string | null;
+  amountIncVat: number | null;
+  receptionDate: string | null;
 }
