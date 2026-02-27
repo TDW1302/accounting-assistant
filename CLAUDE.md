@@ -198,6 +198,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - Automatic invoice import from Gmail (PDF attachments)
 - PDF file backup strategy (NAS backup, copy to network device, etc. — TBD)
 - Batch invoice upload: upload multiple PDFs at once, each creating a separate invoice (with AI extraction per file)
+- Bank statement-based invoice numbering: number invoices in the order they appear on bank statements (CODA files) to match the accounting sequence. Requires matching invoices to bank transactions (by IBAN + amount + payment date). Blocked: Falco API does not expose bank statements/CODA endpoints as of Feb 2026 — revisit when/if the API adds support. Alternative fallback: manual .cod file upload and parsing.
 - Other automations TBD
 
 ## Data model
