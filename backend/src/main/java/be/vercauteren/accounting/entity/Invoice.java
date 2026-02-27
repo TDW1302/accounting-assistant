@@ -71,7 +71,7 @@ public class Invoice {
     @NotNull
     @Column(nullable = false)
     @Builder.Default
-    private Boolean peppol = false;
+    private boolean peppol = false;
 
     private String comment;
 

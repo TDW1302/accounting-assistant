@@ -8,7 +8,7 @@ public record UserResponse(
     String username,
     String email,
     UserRole role,
-    Boolean enabled,
+    boolean enabled,
     LocalDateTime passwordChangedAt,
     LocalDateTime passwordExpiresAt,
     LocalDateTime createdAt

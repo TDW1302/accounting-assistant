@@ -23,7 +23,10 @@ export class SupplierList implements OnInit {
 
   deleteSupplier(s: Supplier): void {
     if (confirm(`Supprimer le fournisseur "${s.name}" ?`)) {
-      this.supplierService.delete(s.id).subscribe(() => this.load());
+      this.supplierService.delete(s.id).subscribe({
+        next: () => this.load(),
+        error: () => alert('Erreur lors de la suppression du fournisseur.')
+      });
     }
   }
 }

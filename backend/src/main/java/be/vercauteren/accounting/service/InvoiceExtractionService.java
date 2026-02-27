@@ -5,6 +5,7 @@ import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.SupplierRepository;
+import be.vercauteren.accounting.util.VatUtils;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.Message;
@@ -130,8 +131,8 @@ public class InvoiceExtractionService {
 
             JsonNode node = objectMapper.readTree(cleaned);
 
-            String supplierName = textOrNull(node, "supplierName");
-            String enterpriseNumber = textOrNull(node, "enterpriseNumber");
+            String supplierName = blankToNull(node, "supplierName");
+            String enterpriseNumber = blankToNull(node, "enterpriseNumber");
             Long supplierId = matchSupplier(supplierName, enterpriseNumber, suppliers);
 
             InvoiceType type = parseEnum(node, "type", InvoiceType.class, InvoiceType.PURCHASE);
@@ -148,7 +149,7 @@ public class InvoiceExtractionService {
                 dateOrNull(node, "paymentDate"),
                 dateScope,
                 dateOrNull(node, "scopeDate"),
-                textOrNull(node, "comment")
+                blankToNull(node, "comment")
             );
         } catch (Exception e) {
             log.error("Failed to parse Claude response: {}", json, e);
@@ -161,10 +162,9 @@ public class InvoiceExtractionService {
 
         // Try enterprise number first (most reliable)
         if (enterpriseNumber != null) {
-            String normalized = enterpriseNumber.replaceAll("[^0-9]", "");
+            String normalized = VatUtils.normalizeVat(enterpriseNumber);
             for (Supplier s : suppliers) {
-                if (s.getEnterpriseNumber() != null
-                    && s.getEnterpriseNumber().replaceAll("[^0-9]", "").equals(normalized)) {
+                if (normalized != null && normalized.equals(VatUtils.normalizeVat(s.getEnterpriseNumber()))) {
                     return s.getId();
                 }
             }
@@ -191,7 +191,7 @@ public class InvoiceExtractionService {
         return null;
     }
 
-    private String textOrNull(JsonNode node, String field) {
+    private String blankToNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
         if (value == null || value.isNull() || value.asText().isBlank()) return null;
         return value.asText();
@@ -204,6 +204,7 @@ public class InvoiceExtractionService {
         try {
             return new BigDecimal(value.asText());
         } catch (NumberFormatException e) {
+            log.debug("Failed to parse decimal field '{}': {}", field, value.asText());
             return null;
         }
     }
@@ -214,6 +215,7 @@ public class InvoiceExtractionService {
         try {
             return LocalDate.parse(value.asText());
         } catch (Exception e) {
+            log.debug("Failed to parse date field '{}': {}", field, value.asText());
             return null;
         }
     }

@@ -11,11 +11,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import be.vercauteren.accounting.entity.User;
-import be.vercauteren.accounting.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,6 +26,7 @@ public class InvoiceService {
     private final SupplierService supplierService;
     private final FileNameGenerator fileNameGenerator;
     private final FileStorageService fileStorageService;
+    private final AuthService authService;
 
     public List<InvoiceResponse> findByYear(Integer year) {
         return invoiceRepository.findByYearOrderByNumberAscSubNumberAsc(year).stream()
@@ -96,7 +93,7 @@ public class InvoiceService {
             .scopeDate(request.scopeDate())
             .fileDetail(request.fileDetail())
             .falcoDocumentId(request.falcoDocumentId())
-            .createdBy(getCurrentUser())
+            .createdBy(authService.getCurrentUser())
             .build();
 
         return toResponse(invoiceRepository.save(invoice));
@@ -149,14 +146,6 @@ public class InvoiceService {
         invoiceRepository.deleteById(id);
     }
 
-    private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return userDetails.getUser();
-        }
-        return null;
-    }
-
     private Invoice getOrThrow(Long id) {
         return invoiceRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found: " + id));
@@ -175,7 +164,7 @@ public class InvoiceService {
             invoice.getVatAmount(),
             invoice.getReceptionDate(),
             invoice.getPaymentDate(),
-            invoice.getPeppol(),
+            invoice.isPeppol(),
             invoice.getComment(),
             invoice.getFilePath(),
             invoice.getDateScope(),

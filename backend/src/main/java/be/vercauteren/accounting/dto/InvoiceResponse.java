@@ -17,7 +17,7 @@ public record InvoiceResponse(
     BigDecimal vatAmount,
     LocalDate receptionDate,
     LocalDate paymentDate,
-    Boolean peppol,
+    boolean peppol,
     String comment,
     String filePath,
     DateScope dateScope,

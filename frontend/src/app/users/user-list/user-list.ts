@@ -25,7 +25,10 @@ export class UserList implements OnInit {
 
   deleteUser(user: User) {
     if (confirm(`Supprimer l'utilisateur "${user.username}" ?`)) {
-      this.userService.delete(user.id).subscribe(() => this.load());
+      this.userService.delete(user.id).subscribe({
+        next: () => this.load(),
+        error: () => alert('Erreur lors de la suppression de l\'utilisateur.')
+      });
     }
   }
 }

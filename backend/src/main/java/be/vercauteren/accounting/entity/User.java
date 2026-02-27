@@ -44,7 +44,7 @@ public class User {
 
     @Column(nullable = false)
     @Builder.Default
-    private Boolean enabled = true;
+    private boolean enabled = true;
 
     @Column(nullable = false)
     private LocalDateTime passwordChangedAt;

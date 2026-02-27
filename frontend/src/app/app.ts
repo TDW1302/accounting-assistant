@@ -13,6 +13,7 @@ export class App implements OnInit {
   private readonly router = inject(Router);
 
   ngOnInit() {
+    // 401 is expected when not logged in — silently ignore
     this.authService.getCurrentUser().subscribe({
       error: () => {}
     });

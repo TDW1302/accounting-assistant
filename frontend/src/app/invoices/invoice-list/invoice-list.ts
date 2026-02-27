@@ -78,12 +78,15 @@ export class InvoiceList implements OnInit {
 
   deleteInvoice(inv: Invoice): void {
     if (confirm(`Supprimer la facture #${inv.number} ?`)) {
-      this.invoiceService.delete(inv.id).subscribe(() => {
-        if (this.searchActive) {
-          this.search();
-        } else {
-          this.load();
-        }
+      this.invoiceService.delete(inv.id).subscribe({
+        next: () => {
+          if (this.searchActive) {
+            this.search();
+          } else {
+            this.load();
+          }
+        },
+        error: () => alert('Erreur lors de la suppression de la facture.')
       });
     }
   }

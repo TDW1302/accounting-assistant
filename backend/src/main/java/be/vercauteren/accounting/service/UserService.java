@@ -124,7 +124,7 @@ public class UserService {
         return LocalDateTime.now().isAfter(user.getPasswordExpiresAt());
     }
 
-    public User getOrThrow(Long id) {
+    private User getOrThrow(Long id) {
         return userRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
     }
@@ -135,7 +135,7 @@ public class UserService {
             user.getUsername(),
             user.getEmail(),
             user.getRole(),
-            user.getEnabled(),
+            user.isEnabled(),
             user.getPasswordChangedAt(),
             user.getPasswordExpiresAt(),
             user.getCreatedAt()

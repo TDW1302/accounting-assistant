@@ -20,13 +20,6 @@ public class InvoiceSpecification {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("id"), supplierId);
     }
 
-    public static Specification<Invoice> supplierNameContains(String name) {
-        return (root, query, cb) -> {
-            Join<Invoice, Supplier> supplier = root.join("supplier");
-            return cb.like(cb.lower(supplier.get("name")), "%" + name.toLowerCase() + "%");
-        };
-    }
-
     public static Specification<Invoice> amountBetween(BigDecimal min, BigDecimal max) {
         return (root, query, cb) -> {
             if (min != null && max != null) {

@@ -18,11 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import be.vercauteren.accounting.util.VatUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PeppolService {
 
     private final FalcoApiClient falcoApiClient;
@@ -98,7 +101,8 @@ public class PeppolService {
         if (doc.amount() != null && !doc.amount().isBlank()) {
             try {
                 amount = new BigDecimal(doc.amount());
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException e) {
+                log.warn("Failed to parse Peppol amount: {}", doc.amount());
             }
         }
 
@@ -129,7 +133,7 @@ public class PeppolService {
         // Deduplicate senders by normalized VAT number, keeping the first occurrence
         Map<String, FalcoInboundDocument> uniqueSenders = new LinkedHashMap<>();
         for (FalcoInboundDocument doc : response.data()) {
-            String vat = normalizeVat(doc.senderVatNumber());
+            String vat = VatUtils.normalizeVat(doc.senderVatNumber());
             if (vat != null && !uniqueSenders.containsKey(vat)) {
                 uniqueSenders.put(vat, doc);
             }
@@ -137,9 +141,9 @@ public class PeppolService {
 
         List<Supplier> existingSuppliers = supplierRepository.findAll();
         Map<String, Supplier> existingByVat = existingSuppliers.stream()
-            .filter(s -> normalizeVat(s.getEnterpriseNumber()) != null)
+            .filter(s -> VatUtils.normalizeVat(s.getEnterpriseNumber()) != null)
             .collect(Collectors.toMap(
-                s -> normalizeVat(s.getEnterpriseNumber()),
+                s -> VatUtils.normalizeVat(s.getEnterpriseNumber()),
                 s -> s,
                 (a, b) -> a
             ));
@@ -170,21 +174,13 @@ public class PeppolService {
         return result;
     }
 
-    private String normalizeVat(String vatNumber) {
-        if (vatNumber == null || vatNumber.isBlank()) {
-            return null;
-        }
-        String normalized = vatNumber.replaceAll("[^0-9]", "");
-        return normalized.isEmpty() ? null : normalized;
-    }
-
     private Supplier matchSupplier(String vatNumber, List<Supplier> suppliers) {
-        String normalized = normalizeVat(vatNumber);
+        String normalized = VatUtils.normalizeVat(vatNumber);
         if (normalized == null) {
             return null;
         }
         return suppliers.stream()
-            .filter(s -> normalized.equals(normalizeVat(s.getEnterpriseNumber())))
+            .filter(s -> normalized.equals(VatUtils.normalizeVat(s.getEnterpriseNumber())))
             .findFirst()
             .orElse(null);
     }

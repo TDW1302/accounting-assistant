@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { UserService } from '../../services/user.service';
+import { UserRole } from '../../models/user.model';
 
 @Component({
   selector: 'app-user-form',
@@ -50,7 +51,7 @@ export class UserForm implements OnInit {
       const { email, role, enabled } = this.form.getRawValue();
       this.userService.update(this.userId, {
         email: email!,
-        role: role! as any,
+        role: role! as UserRole,
         enabled: enabled!
       }).subscribe(() => this.router.navigate(['/users']));
     } else {
@@ -59,7 +60,7 @@ export class UserForm implements OnInit {
         username: username!,
         email: email!,
         password: password!,
-        role: role! as any,
+        role: role! as UserRole,
         enabled: enabled!
       }).subscribe(() => this.router.navigate(['/users']));
     }
