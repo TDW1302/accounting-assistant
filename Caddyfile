@@ -1,3 +1,10 @@
-tdw1302.duckdns.org:8443 {
-    reverse_proxy app:80
+{
+	auto_https disable_redirects
+}
+
+tdw1302.duckdns.org:8999 {
+	tls {
+		dns duckdns {env.DUCKDNS_API_TOKEN}
+	}
+	reverse_proxy app:80
 }

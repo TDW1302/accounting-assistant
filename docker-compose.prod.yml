@@ -1,8 +1,10 @@
 services:
   caddy:
-    image: caddy:2-alpine
+    image: serfriz/caddy-duckdns:latest
     ports:
-      - "8443:8443"
+      - "8999:8999"
+    environment:
+      - DUCKDNS_API_TOKEN=${DUCKDNS_TOKEN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy-data:/data
