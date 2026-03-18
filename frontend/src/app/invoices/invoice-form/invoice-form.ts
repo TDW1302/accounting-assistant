@@ -29,6 +29,7 @@ export class InvoiceForm implements OnInit {
   existingFilePath: string | null = null;
   autoExtract = true;
   extracting = false;
+  submitted = false;
   showScanner = false;
   scannerImageFile: File | null = null;
 
@@ -130,7 +131,7 @@ export class InvoiceForm implements OnInit {
         next: (result) => {
           const patch: Record<string, unknown> = {};
           if (result.type) patch['type'] = result.type;
-          if (result.supplierId) patch['supplierId'] = result.supplierId;
+          if (result.supplierId) patch['supplierId'] = String(result.supplierId);
           if (result.amountIncVat != null) patch['amountIncVat'] = result.amountIncVat;
           if (result.amountExVat != null) patch['amountExVat'] = result.amountExVat;
           if (result.vatAmount != null) patch['vatAmount'] = result.vatAmount;
@@ -150,6 +151,7 @@ export class InvoiceForm implements OnInit {
   }
 
   save(): void {
+    this.submitted = true;
     if (this.form.invalid) return;
 
     const req: InvoiceRequest = {

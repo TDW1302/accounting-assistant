@@ -6,6 +6,22 @@ input[type="checkbox"] {
   margin-right: 0.5rem;
 }
 
+.required {
+  color: #dc2626;
+}
+
+.field-error {
+  display: block;
+  font-size: 0.8rem;
+  color: #dc2626;
+  margin-top: 0.25rem;
+}
+
+input.invalid,
+select.invalid {
+  border-color: #dc2626;
+}
+
 .file-upload {
   display: flex;
   flex-direction: column;
