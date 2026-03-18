@@ -10,16 +10,23 @@ import be.vercauteren.accounting.repository.UserRepository;
 import be.vercauteren.accounting.util.VatUtils;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.Base64ImageSource;
+import com.anthropic.models.messages.ContentBlockParam;
+import com.anthropic.models.messages.ImageBlockParam;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.TextBlockParam;
 import com.google.genai.Client;
+import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -71,28 +78,39 @@ public class InvoiceExtractionService {
     }
 
     public InvoiceExtractionResult extract(MultipartFile file) throws IOException {
-        String contentType = file.getContentType();
-        if (contentType != null && contentType.startsWith("image/")) {
-            log.info("Image file detected, skipping text extraction");
-            return emptyResult();
-        }
-
-        String pdfText = extractText(file);
-        if (pdfText.isBlank()) {
-            log.warn("PDF text extraction returned empty text");
-            return emptyResult();
-        }
-
         List<Supplier> suppliers = supplierRepository.findAll();
-        String prompt = buildPrompt(pdfText, suppliers);
-
         AiProvider provider = resolveProvider();
+
+        String contentType = file.getContentType();
+        boolean isImage = contentType != null && contentType.startsWith("image/");
+
+        // Try text extraction for PDFs
+        String pdfText = null;
+        if (!isImage) {
+            pdfText = extractText(file);
+            if (pdfText.isBlank()) {
+                pdfText = null;
+            }
+        }
+
         String responseText;
 
-        if (provider == AiProvider.GEMINI) {
-            responseText = callGemini(prompt);
+        if (pdfText != null) {
+            // Text-based extraction (cheap)
+            String prompt = buildPrompt(pdfText, suppliers);
+            log.info("Using text-based extraction with {}", provider);
+            responseText = (provider == AiProvider.GEMINI)
+                ? callGemini(prompt)
+                : callClaude(prompt);
         } else {
-            responseText = callClaude(prompt);
+            // Vision fallback (image or scanned PDF)
+            log.info("Using vision extraction with {}", provider);
+            String mimeType = isImage ? contentType : "application/pdf";
+            byte[] fileBytes = file.getBytes();
+            String instructions = buildVisionPrompt(suppliers);
+            responseText = (provider == AiProvider.GEMINI)
+                ? callGeminiVision(instructions, fileBytes, mimeType)
+                : callClaudeVision(instructions, fileBytes, mimeType);
         }
 
         return parseResponse(responseText, suppliers);
@@ -117,6 +135,8 @@ public class InvoiceExtractionService {
         return preferred;
     }
 
+    // --- Text-based calls ---
+
     private String callClaude(String prompt) {
         MessageCreateParams params = MessageCreateParams.builder()
             .maxTokens(1024L)
@@ -138,6 +158,65 @@ public class InvoiceExtractionService {
         return response.text();
     }
 
+    // --- Vision calls ---
+
+    private String callClaudeVision(String prompt, byte[] imageBytes, String mimeType) {
+        Base64ImageSource.MediaType mediaType = toClaudeMediaType(mimeType);
+        String base64 = Base64.getEncoder().encodeToString(imageBytes);
+
+        ImageBlockParam imageBlock = ImageBlockParam.builder()
+            .source(Base64ImageSource.builder()
+                .data(base64)
+                .mediaType(mediaType)
+                .build())
+            .build();
+
+        TextBlockParam textBlock = TextBlockParam.builder()
+            .text(prompt)
+            .build();
+
+        MessageCreateParams params = MessageCreateParams.builder()
+            .maxTokens(1024L)
+            .model(anthropicModel)
+            .addUserMessageOfBlockParams(List.of(
+                ContentBlockParam.ofImage(imageBlock),
+                ContentBlockParam.ofText(textBlock)
+            ))
+            .build();
+
+        Message message = anthropicClient.messages().create(params);
+
+        return message.content().stream()
+            .filter(block -> block.isText())
+            .map(block -> block.asText().text())
+            .collect(Collectors.joining());
+    }
+
+    private String callGeminiVision(String prompt, byte[] imageBytes, String mimeType) {
+        Content content = Content.builder()
+            .role("user")
+            .parts(List.of(
+                Part.fromBytes(imageBytes, mimeType),
+                Part.fromText(prompt)
+            ))
+            .build();
+
+        GenerateContentResponse response = geminiClient.models
+            .generateContent(geminiModel, List.of(content), null);
+        return response.text();
+    }
+
+    private Base64ImageSource.MediaType toClaudeMediaType(String mimeType) {
+        return switch (mimeType) {
+            case "image/png" -> Base64ImageSource.MediaType.IMAGE_PNG;
+            case "image/gif" -> Base64ImageSource.MediaType.IMAGE_GIF;
+            case "image/webp" -> Base64ImageSource.MediaType.IMAGE_WEBP;
+            default -> Base64ImageSource.MediaType.IMAGE_JPEG;
+        };
+    }
+
+    // --- Helpers ---
+
     private String extractText(MultipartFile file) throws IOException {
         try (PDDocument document = Loader.loadPDF(file.getBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
@@ -145,9 +224,30 @@ public class InvoiceExtractionService {
         }
     }
 
+    private String buildVisionPrompt(List<Supplier> suppliers) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Look at this invoice/receipt image and extract structured data. ");
+        sb.append("Return ONLY a JSON object with these fields:\n");
+        appendJsonFields(sb);
+        appendSupplierList(sb, suppliers);
+        sb.append("\nIf the supplier matches one of the known suppliers above, set supplierName to that supplier's exact name.\n\n");
+        sb.append("Respond with ONLY the JSON object, no markdown, no explanation.");
+        return sb.toString();
+    }
+
     private String buildPrompt(String pdfText, List<Supplier> suppliers) {
         StringBuilder sb = new StringBuilder();
         sb.append("Extract structured data from this invoice. Return ONLY a JSON object with these fields:\n");
+        appendJsonFields(sb);
+        appendSupplierList(sb, suppliers);
+        sb.append("\nIf the supplier matches one of the known suppliers above, set supplierName to that supplier's exact name.\n\n");
+        sb.append("Invoice text:\n---\n");
+        sb.append(pdfText);
+        sb.append("\n---\n\nRespond with ONLY the JSON object, no markdown, no explanation.");
+        return sb.toString();
+    }
+
+    private void appendJsonFields(StringBuilder sb) {
         sb.append("- type: \"PURCHASE\" or \"SALE\" (almost always PURCHASE)\n");
         sb.append("- supplierName: the supplier/vendor name as it appears on the invoice\n");
         sb.append("- enterpriseNumber: the supplier's enterprise/VAT number if present\n");
@@ -164,7 +264,9 @@ public class InvoiceExtractionService {
         sb.append("  - NONE if unclear\n");
         sb.append("- scopeDate: the reference date for the period in YYYY-MM-DD format (first day of the period), or null\n");
         sb.append("- comment: invoice reference number or any useful info, or null\n\n");
+    }
 
+    private void appendSupplierList(StringBuilder sb, List<Supplier> suppliers) {
         sb.append("Known suppliers:\n");
         for (Supplier s : suppliers) {
             sb.append("- ID ").append(s.getId()).append(": ").append(s.getName());
@@ -172,13 +274,6 @@ public class InvoiceExtractionService {
             if (s.getEnterpriseNumber() != null) sb.append(" [").append(s.getEnterpriseNumber()).append("]");
             sb.append("\n");
         }
-        sb.append("\nIf the supplier matches one of the known suppliers above, set supplierName to that supplier's exact name.\n\n");
-
-        sb.append("Invoice text:\n---\n");
-        sb.append(pdfText);
-        sb.append("\n---\n\nRespond with ONLY the JSON object, no markdown, no explanation.");
-
-        return sb.toString();
     }
 
     private InvoiceExtractionResult parseResponse(String json, List<Supplier> suppliers) {
