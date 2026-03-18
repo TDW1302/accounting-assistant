@@ -6,6 +6,7 @@ import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.SupplierRepository;
+import be.vercauteren.accounting.repository.UserRepository;
 import be.vercauteren.accounting.util.VatUtils;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
@@ -36,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class InvoiceExtractionService {
 
     private final SupplierRepository supplierRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final AuthService authService;
 
@@ -97,7 +99,9 @@ public class InvoiceExtractionService {
     }
 
     private AiProvider resolveProvider() {
+        // Load fresh from DB — the session-cached User may have stale aiProvider
         AiProvider preferred = authService.getCurrentUser()
+            .map(sessionUser -> userRepository.findByUsername(sessionUser.getUsername()).orElse(sessionUser))
             .map(user -> user.getAiProvider() != null ? user.getAiProvider() : AiProvider.CLAUDE)
             .orElse(AiProvider.CLAUDE);
 
