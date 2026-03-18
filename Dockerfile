@@ -41,8 +41,8 @@ RUN mkdir -p /data/db /data/uploads
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
     chown -R appuser:appgroup /data /app /usr/share/nginx/html
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost:80/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget -q --spider http://localhost:80/ || exit 1
 
 EXPOSE 80
 
