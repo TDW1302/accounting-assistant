@@ -1,8 +1,18 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
   app:
     image: ghcr.io/tdw1302/accounting-assistant:latest
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     env_file:
       - .env
     volumes:
@@ -18,3 +28,5 @@ services:
 volumes:
   accounting-data:
   accounting-uploads:
+  caddy-data:
+  caddy-config:
