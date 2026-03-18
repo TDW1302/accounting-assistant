@@ -4,6 +4,8 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+ARG APP_VERSION=dev
+RUN echo "export const APP_VERSION = '${APP_VERSION}';" > src/environments/version.ts
 RUN npm run build
 
 # Stage 2: Build backend

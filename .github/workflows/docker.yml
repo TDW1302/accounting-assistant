@@ -23,6 +23,7 @@ jobs:
         with:
           context: .
           push: true
+          build-args: APP_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/tdw1302/accounting-assistant:latest
             ghcr.io/tdw1302/accounting-assistant:${{ github.sha }}
