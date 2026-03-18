@@ -1,5 +1,6 @@
 package be.vercauteren.accounting.dto;
 
+import be.vercauteren.accounting.entity.AiProvider;
 import be.vercauteren.accounting.entity.UserRole;
 import java.time.LocalDateTime;
 
@@ -11,5 +12,6 @@ public record UserResponse(
     boolean enabled,
     LocalDateTime passwordChangedAt,
     LocalDateTime passwordExpiresAt,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    AiProvider aiProvider
 ) {}

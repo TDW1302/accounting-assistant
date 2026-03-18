@@ -5,6 +5,7 @@ import be.vercauteren.accounting.dto.RegisterRequest;
 import be.vercauteren.accounting.dto.UserRequest;
 import be.vercauteren.accounting.dto.UserResponse;
 import be.vercauteren.accounting.dto.UserUpdateRequest;
+import be.vercauteren.accounting.entity.AiProvider;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.entity.UserRole;
 import be.vercauteren.accounting.repository.UserRepository;
@@ -113,6 +114,14 @@ public class UserService {
     }
 
     @Transactional
+    public void updateAiProvider(String username, AiProvider provider) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        user.setAiProvider(provider);
+        userRepository.save(user);
+    }
+
+    @Transactional
     public void delete(Long id) {
         if (!userRepository.existsById(id)) {
             throw new EntityNotFoundException("User not found: " + id);
@@ -130,6 +139,7 @@ public class UserService {
     }
 
     public UserResponse toResponse(User user) {
+        AiProvider provider = user.getAiProvider() != null ? user.getAiProvider() : AiProvider.CLAUDE;
         return new UserResponse(
             user.getId(),
             user.getUsername(),
@@ -138,7 +148,8 @@ public class UserService {
             user.isEnabled(),
             user.getPasswordChangedAt(),
             user.getPasswordExpiresAt(),
-            user.getCreatedAt()
+            user.getCreatedAt(),
+            provider
         );
     }
 }

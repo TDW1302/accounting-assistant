@@ -1,6 +1,7 @@
 package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
+import be.vercauteren.accounting.entity.AiProvider;
 import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
@@ -10,7 +11,8 @@ import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
-import com.anthropic.models.messages.Model;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -35,20 +37,35 @@ public class InvoiceExtractionService {
 
     private final SupplierRepository supplierRepository;
     private final ObjectMapper objectMapper;
+    private final AuthService authService;
 
     @Value("${app.anthropic.api-key}")
-    private String apiKey;
+    private String anthropicApiKey;
 
     @Value("${app.anthropic.model}")
-    private String model;
+    private String anthropicModel;
 
-    private AnthropicClient client;
+    @Value("${app.gemini.api-key}")
+    private String geminiApiKey;
+
+    @Value("${app.gemini.model}")
+    private String geminiModel;
+
+    private AnthropicClient anthropicClient;
+    private Client geminiClient;
 
     @PostConstruct
     void init() {
-        client = AnthropicOkHttpClient.builder()
-            .apiKey(apiKey)
-            .build();
+        if (!anthropicApiKey.isBlank()) {
+            anthropicClient = AnthropicOkHttpClient.builder()
+                .apiKey(anthropicApiKey)
+                .build();
+        }
+        if (!geminiApiKey.isBlank()) {
+            geminiClient = Client.builder()
+                .apiKey(geminiApiKey)
+                .build();
+        }
     }
 
     public InvoiceExtractionResult extract(MultipartFile file) throws IOException {
@@ -67,20 +84,54 @@ public class InvoiceExtractionService {
         List<Supplier> suppliers = supplierRepository.findAll();
         String prompt = buildPrompt(pdfText, suppliers);
 
+        AiProvider provider = resolveProvider();
+        String responseText;
+
+        if (provider == AiProvider.GEMINI) {
+            responseText = callGemini(prompt);
+        } else {
+            responseText = callClaude(prompt);
+        }
+
+        return parseResponse(responseText, suppliers);
+    }
+
+    private AiProvider resolveProvider() {
+        AiProvider preferred = authService.getCurrentUser()
+            .map(user -> user.getAiProvider() != null ? user.getAiProvider() : AiProvider.CLAUDE)
+            .orElse(AiProvider.CLAUDE);
+
+        if (preferred == AiProvider.GEMINI && geminiClient == null) {
+            log.warn("Gemini selected but API key not configured, falling back to Claude");
+            return AiProvider.CLAUDE;
+        }
+        if (preferred == AiProvider.CLAUDE && anthropicClient == null) {
+            log.warn("Claude selected but API key not configured, falling back to Gemini");
+            return AiProvider.GEMINI;
+        }
+
+        return preferred;
+    }
+
+    private String callClaude(String prompt) {
         MessageCreateParams params = MessageCreateParams.builder()
             .maxTokens(1024L)
             .addUserMessage(prompt)
-            .model(model)
+            .model(anthropicModel)
             .build();
 
-        Message message = client.messages().create(params);
+        Message message = anthropicClient.messages().create(params);
 
-        String responseText = message.content().stream()
+        return message.content().stream()
             .filter(block -> block.isText())
             .map(block -> block.asText().text())
             .collect(Collectors.joining());
+    }
 
-        return parseResponse(responseText, suppliers);
+    private String callGemini(String prompt) {
+        GenerateContentResponse response = geminiClient.models
+            .generateContent(geminiModel, prompt, null);
+        return response.text();
     }
 
     private String extractText(MultipartFile file) throws IOException {
@@ -158,7 +209,7 @@ public class InvoiceExtractionService {
                 blankToNull(node, "comment")
             );
         } catch (Exception e) {
-            log.error("Failed to parse Claude response: {}", json, e);
+            log.error("Failed to parse AI response: {}", json, e);
             return emptyResult();
         }
     }

@@ -31,6 +31,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.apache.pdfbox:pdfbox:3.0.6'
 	implementation 'com.anthropic:anthropic-java:2.16.0'
+	implementation 'com.google.genai:google-genai:1.44.0'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2'
 	annotationProcessor 'org.projectlombok:lombok'

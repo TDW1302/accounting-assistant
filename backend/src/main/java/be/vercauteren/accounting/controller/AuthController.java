@@ -1,5 +1,6 @@
 package be.vercauteren.accounting.controller;
 
+import be.vercauteren.accounting.dto.AiProviderRequest;
 import be.vercauteren.accounting.dto.AuthResponse;
 import be.vercauteren.accounting.dto.ChangePasswordRequest;
 import be.vercauteren.accounting.dto.LoginRequest;
@@ -61,6 +62,16 @@ public class AuthController {
         return authService.getCurrentUser()
             .map(user -> {
                 userService.changePassword(user.getUsername(), request);
+                return ResponseEntity.noContent().<Void>build();
+            })
+            .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    @PostMapping("/ai-provider")
+    public ResponseEntity<Void> updateAiProvider(@Valid @RequestBody AiProviderRequest request) {
+        return authService.getCurrentUser()
+            .map(user -> {
+                userService.updateAiProvider(user.getUsername(), request.aiProvider());
                 return ResponseEntity.noContent().<Void>build();
             })
             .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());

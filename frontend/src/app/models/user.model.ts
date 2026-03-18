@@ -1,4 +1,5 @@
 export type UserRole = 'ADMIN' | 'USER' | 'VIEWER';
+export type AiProvider = 'CLAUDE' | 'GEMINI';
 
 export interface User {
   id: number;
@@ -9,6 +10,7 @@ export interface User {
   passwordChangedAt: string;
   passwordExpiresAt: string;
   createdAt: string;
+  aiProvider: AiProvider;
 }
 
 export interface LoginRequest {
@@ -44,4 +46,8 @@ export interface UserUpdateRequest {
   email: string;
   role: UserRole;
   enabled: boolean;
+}
+
+export interface AiProviderRequest {
+  aiProvider: AiProvider;
 }

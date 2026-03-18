@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import {
   User, UserRole, LoginRequest, RegisterRequest,
-  ChangePasswordRequest, AuthResponse
+  ChangePasswordRequest, AuthResponse, AiProviderRequest
 } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
@@ -49,6 +49,17 @@ export class AuthService {
   changePassword(request: ChangePasswordRequest): Observable<void> {
     return this.http.post<void>(`${this.url}/change-password`, request).pipe(
       tap(() => this.passwordExpired.set(false))
+    );
+  }
+
+  updateAiProvider(request: AiProviderRequest): Observable<void> {
+    return this.http.post<void>(`${this.url}/ai-provider`, request).pipe(
+      tap(() => {
+        const user = this.currentUser();
+        if (user) {
+          this.currentUser.set({ ...user, aiProvider: request.aiProvider });
+        }
+      })
     );
   }
 

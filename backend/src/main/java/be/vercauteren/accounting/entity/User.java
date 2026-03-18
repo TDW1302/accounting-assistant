@@ -46,6 +46,10 @@ public class User {
     @Builder.Default
     private boolean enabled = true;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private AiProvider aiProvider = AiProvider.CLAUDE;
+
     @Column(nullable = false)
     private LocalDateTime passwordChangedAt;
 
