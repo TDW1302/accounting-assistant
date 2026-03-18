@@ -74,6 +74,10 @@ public class InvoiceController {
 
     @PostMapping("/extract")
     public InvoiceExtractionResult extract(@RequestParam("file") MultipartFile file) throws IOException {
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equalsIgnoreCase("application/pdf")) {
+            throw new IllegalArgumentException("Only PDF files are accepted for extraction");
+        }
         return invoiceExtractionService.extract(file);
     }
 

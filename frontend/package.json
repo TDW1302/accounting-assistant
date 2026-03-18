@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "postinstall": "node -e \"const fs=require('fs');const src='node_modules/@techstark/opencv-js/dist/opencv.js';const dir='public/opencv';if(fs.existsSync(src)){fs.mkdirSync(dir,{recursive:true});fs.copyFileSync(src,dir+'/opencv.js');console.log('OpenCV.js copied to public/opencv/')}\""
   },
   "prettier": {
     "printWidth": 100,
@@ -29,6 +30,7 @@
     "@angular/forms": "^21.1.0",
     "@angular/platform-browser": "^21.1.0",
     "@angular/router": "^21.1.0",
+    "@techstark/opencv-js": "^4.12.0-release.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -36,7 +38,7 @@
     "@angular/build": "^21.1.4",
     "@angular/cli": "^21.1.4",
     "@angular/compiler-cli": "^21.1.0",
-    "jsdom": "^27.1.0",
+    "jsdom": "^28.1.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

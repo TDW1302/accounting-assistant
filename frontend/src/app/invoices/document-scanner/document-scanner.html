@@ -1,0 +1,71 @@
+<div class="scanner-overlay">
+  <div class="scanner-modal">
+    <div class="scanner-header">
+      <h2>Scanner de document</h2>
+      <p>Ajustez les coins du document si nécessaire</p>
+    </div>
+
+    @if (loading) {
+      <div class="scanner-loading">Chargement d'OpenCV...</div>
+    }
+
+    <div
+      class="scanner-canvas-container"
+      [class.hidden]="showPreview"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp()"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd()"
+    >
+      <canvas #sourceCanvas></canvas>
+      @if (!loading && corners.length === 4) {
+        <svg
+          #svgOverlay
+          class="svg-overlay"
+          [attr.width]="displayWidth"
+          [attr.height]="displayHeight"
+          [attr.viewBox]="'0 0 ' + displayWidth + ' ' + displayHeight"
+        >
+          <polygon
+            [attr.points]="polygonPoints"
+            fill="rgba(37, 99, 235, 0.15)"
+            stroke="#2563eb"
+            stroke-width="2"
+          />
+          @for (corner of corners; track $index) {
+            <circle
+              [attr.cx]="corner.x"
+              [attr.cy]="corner.y"
+              r="20"
+              fill="#2563eb"
+              stroke="white"
+              stroke-width="2"
+              class="corner-handle"
+              (mousedown)="onCornerMouseDown($event, $index)"
+              (touchstart)="onCornerTouchStart($event, $index)"
+            />
+          }
+        </svg>
+      }
+    </div>
+
+    @if (showPreview) {
+      <div class="scanner-preview">
+        <h3>Aperçu du résultat</h3>
+        <canvas #previewCanvas></canvas>
+      </div>
+    }
+
+    <div class="scanner-actions">
+      @if (!showPreview) {
+        <button type="button" class="btn" (click)="redetect()">Détection auto</button>
+        <button type="button" class="btn btn-primary" (click)="confirm()" [disabled]="loading">
+          Confirmer
+        </button>
+      }
+      <button type="button" class="btn" (click)="cancel()">
+        {{ showPreview ? 'Fermer' : 'Annuler' }}
+      </button>
+    </div>
+  </div>
+</div>

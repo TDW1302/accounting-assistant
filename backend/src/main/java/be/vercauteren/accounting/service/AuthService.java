@@ -4,16 +4,19 @@ import be.vercauteren.accounting.dto.AuthResponse;
 import be.vercauteren.accounting.dto.LoginRequest;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.repository.UserRepository;
+import java.util.Optional;
 import be.vercauteren.accounting.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -27,6 +30,12 @@ public class AuthService {
             new UsernamePasswordAuthenticationToken(request.username(), request.password())
         );
 
+        // Prevent session fixation
+        HttpSession oldSession = httpRequest.getSession(false);
+        if (oldSession != null) {
+            oldSession.invalidate();
+        }
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
@@ -34,6 +43,7 @@ public class AuthService {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         User user = userDetails.getUser();
 
+        log.info("User '{}' logged in successfully", user.getUsername());
         return new AuthResponse(
             userService.toResponse(user),
             userService.isPasswordExpired(user)
@@ -41,6 +51,7 @@ public class AuthService {
     }
 
     public void logout(HttpServletRequest httpRequest) {
+        getCurrentUser().ifPresent(user -> log.info("User '{}' logged out", user.getUsername()));
         HttpSession session = httpRequest.getSession(false);
         if (session != null) {
             session.invalidate();
@@ -48,15 +59,15 @@ public class AuthService {
         SecurityContextHolder.clearContext();
     }
 
-    public User getCurrentUser() {
+    public Optional<User> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
+            return Optional.empty();
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof CustomUserDetails userDetails) {
-            return userDetails.getUser();
+            return Optional.of(userDetails.getUser());
         }
-        return null;
+        return Optional.empty();
     }
 }

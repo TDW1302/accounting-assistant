@@ -69,8 +69,111 @@
   }
 }
 
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-left: auto;
+}
+
+.hamburger-icon {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #fff;
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: #fff;
+    position: absolute;
+    left: 0;
+  }
+
+  &::before {
+    top: -7px;
+  }
+
+  &::after {
+    top: 7px;
+  }
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem;
+}
+
+$breakpoint-tablet: 768px;
+
+@media (max-width: $breakpoint-tablet) {
+  .navbar {
+    flex-wrap: wrap;
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav-menu {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 0;
+
+    &.open {
+      display: flex;
+    }
+  }
+
+  .nav-links {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+
+    a {
+      padding: 0.75rem 0.5rem;
+      border-top: 1px solid #334155;
+    }
+  }
+
+  .nav-user {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-left: 0;
+    border-top: 1px solid #334155;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+
+    .username {
+      padding: 0.5rem;
+    }
+
+    a {
+      padding: 0.75rem 0.5rem;
+      display: block;
+    }
+
+    .btn-logout {
+      margin: 0.5rem;
+      min-height: 44px;
+    }
+  }
+}
+
+@media (min-width: $breakpoint-tablet + 1) {
+  .nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex: 1;
+  }
 }

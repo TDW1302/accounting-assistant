@@ -11,6 +11,7 @@ import { AuthService } from './services/auth.service';
 export class App implements OnInit {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  menuOpen = false;
 
   ngOnInit() {
     // 401 is expected when not logged in — silently ignore

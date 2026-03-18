@@ -19,9 +19,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import be.vercauteren.accounting.util.VatUtils;
+import be.vercauteren.accounting.dto.SupplierResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -83,7 +85,6 @@ public class PeppolService {
             null,
             true,
             request.comment(),
-            null,
             request.dateScope(),
             request.scopeDate(),
             request.fileDetail(),
@@ -123,16 +124,17 @@ public class PeppolService {
         );
     }
 
-    public List<Supplier> importSuppliers() {
-        FalcoInboundListResponse response = falcoApiClient.listInbound(null, null, null, 0, 200);
+    @Transactional
+    public List<SupplierResponse> importSuppliers() {
+        List<FalcoInboundDocument> allDocuments = fetchAllInboundDocuments();
 
-        if (response.data() == null || response.data().isEmpty()) {
+        if (allDocuments.isEmpty()) {
             return List.of();
         }
 
         // Deduplicate senders by normalized VAT number, keeping the first occurrence
         Map<String, FalcoInboundDocument> uniqueSenders = new LinkedHashMap<>();
-        for (FalcoInboundDocument doc : response.data()) {
+        for (FalcoInboundDocument doc : allDocuments) {
             String vat = VatUtils.normalizeVat(doc.senderVatNumber());
             if (vat != null && !uniqueSenders.containsKey(vat)) {
                 uniqueSenders.put(vat, doc);
@@ -171,7 +173,36 @@ public class PeppolService {
             }
         }
 
-        return result;
+        return result.stream().map(this::toSupplierResponse).toList();
+    }
+
+    private SupplierResponse toSupplierResponse(Supplier supplier) {
+        return new SupplierResponse(
+            supplier.getId(),
+            supplier.getName(),
+            supplier.getAlias(),
+            supplier.getEnterpriseNumber()
+        );
+    }
+
+    private static final int MAX_PAGES = 50;
+
+    private List<FalcoInboundDocument> fetchAllInboundDocuments() {
+        List<FalcoInboundDocument> allDocuments = new ArrayList<>();
+        int page = 0;
+        int pageSize = 200;
+        while (page < MAX_PAGES) {
+            FalcoInboundListResponse response = falcoApiClient.listInbound(null, null, null, page, pageSize);
+            if (response.data() == null || response.data().isEmpty()) {
+                break;
+            }
+            allDocuments.addAll(response.data());
+            if (response.data().size() < pageSize) {
+                break;
+            }
+            page++;
+        }
+        return allDocuments;
     }
 
     private Supplier matchSupplier(String vatNumber, List<Supplier> suppliers) {

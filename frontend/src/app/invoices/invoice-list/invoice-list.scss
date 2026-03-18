@@ -76,3 +76,35 @@
   color: #64748b;
   padding: 2rem !important;
 }
+
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .search-bar {
+    .search-row {
+      flex-direction: column;
+    }
+
+    .search-field {
+      min-width: unset;
+    }
+
+    .search-actions {
+      flex-direction: column;
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}

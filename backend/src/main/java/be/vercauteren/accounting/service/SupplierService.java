@@ -3,6 +3,7 @@ package be.vercauteren.accounting.service;
 import be.vercauteren.accounting.dto.SupplierRequest;
 import be.vercauteren.accounting.dto.SupplierResponse;
 import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SupplierService {
 
     private final SupplierRepository supplierRepository;
+    private final InvoiceRepository invoiceRepository;
 
     public List<SupplierResponse> findAll() {
         return supplierRepository.findAll().stream()
@@ -47,10 +49,11 @@ public class SupplierService {
 
     @Transactional
     public void delete(Long id) {
-        if (!supplierRepository.existsById(id)) {
-            throw new EntityNotFoundException("Supplier not found: " + id);
+        Supplier supplier = getOrThrow(id);
+        if (invoiceRepository.existsBySupplierId(supplier.getId())) {
+            throw new IllegalArgumentException("Cannot delete supplier: invoices reference this supplier");
         }
-        supplierRepository.deleteById(id);
+        supplierRepository.delete(supplier);
     }
 
     Supplier getOrThrow(Long id) {

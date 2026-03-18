@@ -89,9 +89,9 @@
   </div>
 
   <div class="form-group">
-    <label>Fichier PDF</label>
+    <label>Fichier (PDF ou photo)</label>
     <div class="file-upload">
-      <input type="file" accept=".pdf" (change)="onFileSelected($event)">
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" capture="environment" (change)="onFileSelected($event)">
       @if (!isEdit) {
         <label class="auto-extract-toggle">
           <input type="checkbox" [(ngModel)]="autoExtract" [ngModelOptions]="{standalone: true}">

@@ -61,4 +61,5 @@ export const routes: Routes = [
     loadComponent: () => import('./users/user-form/user-form').then(m => m.UserForm),
     canActivate: [authGuard, roleGuard(['ADMIN'])]
   },
+  { path: '**', redirectTo: 'invoices' },
 ];

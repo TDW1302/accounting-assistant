@@ -46,12 +46,16 @@ public class InvoiceSpecification {
 
     public static Specification<Invoice> keywordSearch(String keyword) {
         return (root, query, cb) -> {
-            String pattern = "%" + keyword.toLowerCase() + "%";
+            String escaped = keyword.toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+            String pattern = "%" + escaped + "%";
             Join<Invoice, Supplier> supplier = root.join("supplier");
             return cb.or(
-                cb.like(cb.lower(root.get("comment")), pattern),
-                cb.like(cb.lower(supplier.get("name")), pattern),
-                cb.like(cb.lower(root.get("fileDetail")), pattern)
+                cb.like(cb.lower(root.get("comment")), pattern, '\\'),
+                cb.like(cb.lower(supplier.get("name")), pattern, '\\'),
+                cb.like(cb.lower(root.get("fileDetail")), pattern, '\\')
             );
         };
     }

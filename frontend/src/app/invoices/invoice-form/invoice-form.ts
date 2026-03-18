@@ -6,10 +6,11 @@ import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { Supplier } from '../../models/supplier.model';
 import { InvoiceRequest, DateScope, InvoiceType } from '../../models/invoice.model';
+import { DocumentScanner } from '../document-scanner/document-scanner';
 
 @Component({
   selector: 'app-invoice-form',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DocumentScanner],
   templateUrl: './invoice-form.html',
   styleUrl: './invoice-form.scss'
 })
@@ -28,6 +29,8 @@ export class InvoiceForm implements OnInit {
   existingFilePath: string | null = null;
   autoExtract = true;
   extracting = false;
+  showScanner = false;
+  scannerImageFile: File | null = null;
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
     { value: 'PURCHASE', label: 'Achat' },
@@ -90,8 +93,37 @@ export class InvoiceForm implements OnInit {
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.selectedFile = input.files?.[0] ?? null;
+    const file = input.files?.[0] ?? null;
 
+    if (file && this.isImageFile(file)) {
+      this.scannerImageFile = file;
+      this.showScanner = true;
+      // Reset input so the same file can be re-selected
+      input.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.triggerExtraction();
+  }
+
+  onDocumentScanned(blob: Blob): void {
+    this.selectedFile = new File([blob], 'scanned-document.jpg', { type: 'image/jpeg' });
+    this.showScanner = false;
+    this.scannerImageFile = null;
+    this.triggerExtraction();
+  }
+
+  onScannerCancelled(): void {
+    this.showScanner = false;
+    this.scannerImageFile = null;
+  }
+
+  private isImageFile(file: File): boolean {
+    return file.type.startsWith('image/');
+  }
+
+  private triggerExtraction(): void {
     if (this.selectedFile && !this.isEdit && this.autoExtract) {
       this.extracting = true;
       this.invoiceService.extract(this.selectedFile).subscribe({
@@ -124,13 +156,12 @@ export class InvoiceForm implements OnInit {
       ...this.form.value,
       supplierId: +this.form.value.supplierId,
       subNumber: this.form.value.subNumber ? +this.form.value.subNumber : null,
-      amountIncVat: this.form.value.amountIncVat ? +this.form.value.amountIncVat : null,
-      amountExVat: this.form.value.amountExVat ? +this.form.value.amountExVat : null,
-      vatAmount: this.form.value.vatAmount ? +this.form.value.vatAmount : null,
+      amountIncVat: this.form.value.amountIncVat != null ? +this.form.value.amountIncVat : null,
+      amountExVat: this.form.value.amountExVat != null ? +this.form.value.amountExVat : null,
+      vatAmount: this.form.value.vatAmount != null ? +this.form.value.vatAmount : null,
       paymentDate: this.form.value.paymentDate || null,
       scopeDate: this.form.value.scopeDate || null,
       comment: this.form.value.comment || null,
-      filePath: this.existingFilePath,
       fileDetail: this.form.value.fileDetail || null,
     };
 
@@ -142,9 +173,15 @@ export class InvoiceForm implements OnInit {
       const file = this.selectedFile;
       op.pipe(
         switchMap(invoice => this.invoiceService.upload(invoice.id, file))
-      ).subscribe(() => this.router.navigate(['/invoices']));
+      ).subscribe({
+        next: () => this.router.navigate(['/invoices']),
+        error: () => alert('Erreur lors de l\'enregistrement de la facture.')
+      });
     } else {
-      op.subscribe(() => this.router.navigate(['/invoices']));
+      op.subscribe({
+        next: () => this.router.navigate(['/invoices']),
+        error: () => alert('Erreur lors de l\'enregistrement de la facture.')
+      });
     }
   }
 

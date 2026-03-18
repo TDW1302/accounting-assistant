@@ -1,18 +1,23 @@
 @if (authService.isAuthenticated()) {
   <nav class="navbar">
     <a class="nav-brand" routerLink="/invoices">Comptabilité</a>
-    <div class="nav-links">
-      <a routerLink="/invoices" routerLinkActive="active">Factures</a>
-      <a routerLink="/peppol" routerLinkActive="active">Peppol</a>
-      <a routerLink="/suppliers" routerLinkActive="active">Fournisseurs</a>
-      @if (authService.hasRole('ADMIN')) {
-        <a routerLink="/users" routerLinkActive="active">Utilisateurs</a>
-      }
-    </div>
-    <div class="nav-user">
-      <span class="username">{{ authService.currentUser()?.username }}</span>
-      <a routerLink="/change-password">Changer mdp</a>
-      <button class="btn-logout" (click)="logout()">Déconnexion</button>
+    <button class="nav-toggle" aria-label="Menu" (click)="menuOpen = !menuOpen" [attr.aria-expanded]="menuOpen">
+      <span class="hamburger-icon"></span>
+    </button>
+    <div class="nav-menu" [class.open]="menuOpen">
+      <div class="nav-links">
+        <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen = false">Factures</a>
+        <a routerLink="/peppol" routerLinkActive="active" (click)="menuOpen = false">Peppol</a>
+        <a routerLink="/suppliers" routerLinkActive="active" (click)="menuOpen = false">Fournisseurs</a>
+        @if (authService.hasRole('ADMIN')) {
+          <a routerLink="/users" routerLinkActive="active" (click)="menuOpen = false">Utilisateurs</a>
+        }
+      </div>
+      <div class="nav-user">
+        <span class="username">{{ authService.currentUser()?.username }}</span>
+        <a routerLink="/change-password" (click)="menuOpen = false">Changer mdp</a>
+        <button class="btn-logout" (click)="logout(); menuOpen = false">Déconnexion</button>
+      </div>
     </div>
   </nav>
 }

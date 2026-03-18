@@ -30,6 +30,11 @@ public class AdminInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        if (adminPassword == null || adminPassword.isBlank()) {
+            log.warn("ADMIN_PASSWORD is not set — skipping admin user creation. Set ADMIN_PASSWORD to create an admin account.");
+            return;
+        }
+
         if (userRepository.existsByUsername(adminUsername)) {
             log.info("Admin user '{}' already exists, skipping creation", adminUsername);
             return;

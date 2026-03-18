@@ -52,6 +52,12 @@ public class InvoiceExtractionService {
     }
 
     public InvoiceExtractionResult extract(MultipartFile file) throws IOException {
+        String contentType = file.getContentType();
+        if (contentType != null && contentType.startsWith("image/")) {
+            log.info("Image file detected, skipping text extraction");
+            return emptyResult();
+        }
+
         String pdfText = extractText(file);
         if (pdfText.isBlank()) {
             log.warn("PDF text extraction returned empty text");

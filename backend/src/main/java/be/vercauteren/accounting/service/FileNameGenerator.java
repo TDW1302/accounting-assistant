@@ -28,11 +28,11 @@ public class FileNameGenerator {
         if (alias == null || alias.isBlank()) {
             alias = invoice.getSupplier().getName().replaceAll("\\s+", "");
         }
-        sb.append("-").append(alias);
+        sb.append("-").append(sanitize(alias));
 
         // File detail
         if (invoice.getFileDetail() != null && !invoice.getFileDetail().isBlank()) {
-            sb.append("-").append(invoice.getFileDetail());
+            sb.append("-").append(sanitize(invoice.getFileDetail()));
         }
 
         sb.append(".pdf");
@@ -53,5 +53,10 @@ public class FileNameGenerator {
             case YEARLY -> String.valueOf(date.getYear());
             case NONE -> null;
         };
+    }
+
+    private String sanitize(String value) {
+        if (value == null) return "";
+        return value.replaceAll("[^a-zA-Z0-9_\\-]", "");
     }
 }

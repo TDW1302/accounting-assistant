@@ -8,3 +8,16 @@ backend.tgz
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+frontend/public/opencv/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+
+# Uploads
+uploads/
+data/

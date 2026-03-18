@@ -98,7 +98,7 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 **Configuration** (`application.properties`):
 - H2 persistent file: `jdbc:h2:file:./data/accounting`
 - DDL auto: `update` (Hibernate manages the schema)
-- Spring Security: session/cookie auth, BCrypt passwords, CSRF disabled
+- Spring Security: session/cookie auth, BCrypt passwords, CSRF enabled (cookie-based `XSRF-TOKEN` for Angular SPA)
 - Falco API: `app.falco.api-key` (from `FALCO_API_KEY` env var), `app.falco.app-secret` (from `FALCO_APP_SECRET` env var), `app.falco.base-url`
 - No Spring profiles (dev/prod) currently
 
@@ -199,6 +199,8 @@ Personal accounting helper application. Replaces an Excel file used to manage pu
 - PDF file backup strategy (NAS backup, copy to network device, etc. — TBD)
 - Batch invoice upload: upload multiple PDFs at once, each creating a separate invoice (with AI extraction per file)
 - Bank statement-based invoice numbering: number invoices in the order they appear on bank statements (CODA files) to match the accounting sequence. Requires matching invoices to bank transactions (by IBAN + amount + payment date). Blocked: Falco API does not expose bank statements/CODA endpoints as of Feb 2026 — revisit when/if the API adds support. Alternative fallback: manual .cod file upload and parsing.
+- OCR for scanned/image-based PDFs: integrate an OCR solution (e.g. Tesseract) to extract text from image PDFs, enabling AI extraction for invoices that currently fall back silently due to empty text
+- Automated tests: unit tests (backend services, controllers) + end-to-end tests (frontend) to secure future evolutions and prevent regressions
 - Other automations TBD
 
 ## Data model
@@ -250,3 +252,34 @@ Generated filename = `{number padded 3}[.{subNumber}]-[{scopeDate formatted by d
 | passwordChangedAt | LocalDateTime | Last password change |
 | passwordExpiresAt | LocalDateTime | Password expiration date (3 months after change) |
 | createdAt | LocalDateTime | Account creation date |
+
+## Audit - Completed (2026-03-16)
+
+All issues resolved. Summary of fixes applied:
+- **CSRF protection** enabled (cookie-based XSRF-TOKEN for Angular SPA) — `SecurityConfig.java`
+- **Rate limiting** on login/register (5 attempts per 15min per IP) — `RateLimitFilter.java`
+- **Invoice numbering** race condition fixed (SERIALIZABLE isolation + retry) — `InvoiceService.java`
+- **File type validation** on upload (extension + content type whitelist) — `InvoiceService.java`
+- **Authorization on delete** (creator or ADMIN only) — `InvoiceService.java`
+- **Year change prevented** in invoice update — `InvoiceService.java`
+- **Session cookie** defaults to secure=true — `application.properties`
+- **Password policy** strengthened (8+ chars, uppercase, lowercase, digit, special) — DTOs
+- **CORS** configured with allowed origins — `SecurityConfig.java`, `application.properties`
+- **Year/amount validation** added (@Min/@Max, @DecimalMin) — `InvoiceRequest.java`
+- **Security audit logging** on login/logout — `AuthService.java`
+- **File+DB transaction** compensation on failure — `InvoiceService.java`
+- **Exception logging** instead of swallowing — `InvoiceService.java`
+- **CSP header** added — `nginx.conf`
+- **Source maps** disabled in production — `angular.json`
+- **@NotNull on primitive** removed — `Invoice.java`
+- **Optional\<User\>** instead of nullable return — `AuthService.java`
+- **Peppol pagination** for supplier import — `PeppolService.java`
+- **SQL wildcards** escaped in keyword search — `InvoiceSpecification.java`
+
+Round 2 fixes (regression audit):
+- **RateLimitFilter memory leak** fixed with `@Scheduled` cleanup every 15min + `@EnableScheduling`
+- **LIKE escape char** declared explicitly (`'\\' `) in JPA Criteria `cb.like()` calls
+- **File extension validation** fixed edge case (no dot in filename)
+- **CORS origins** trimmed to avoid whitespace in env vars
+- **Peppol pagination** guarded with max 50 pages to prevent infinite loop
+- **TransactionTemplate** used for invoice creation (avoids Spring proxy self-invocation bug)

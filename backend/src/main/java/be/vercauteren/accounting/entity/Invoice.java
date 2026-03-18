@@ -68,7 +68,6 @@ public class Invoice {
 
     private LocalDate paymentDate;
 
-    @NotNull
     @Column(nullable = false)
     @Builder.Default
     private boolean peppol = false;

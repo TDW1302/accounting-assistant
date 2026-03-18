@@ -48,23 +48,21 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me() {
-        User user = authService.getCurrentUser();
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.ok(new AuthResponse(
-            userService.toResponse(user),
-            userService.isPasswordExpired(user)
-        ));
+        return authService.getCurrentUser()
+            .map(user -> ResponseEntity.ok(new AuthResponse(
+                userService.toResponse(user),
+                userService.isPasswordExpired(user)
+            )))
+            .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        User user = authService.getCurrentUser();
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        userService.changePassword(user.getUsername(), request);
-        return ResponseEntity.noContent().build();
+        return authService.getCurrentUser()
+            .map(user -> {
+                userService.changePassword(user.getUsername(), request);
+                return ResponseEntity.noContent().<Void>build();
+            })
+            .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 }

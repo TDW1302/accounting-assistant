@@ -22,6 +22,9 @@ public class FileStorageService {
         Files.createDirectories(yearDir);
 
         Path target = yearDir.resolve(filename);
+        if (!target.normalize().startsWith(uploadDirectory.normalize())) {
+            throw new IOException("Invalid file path: path traversal detected");
+        }
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
         return target.toString();

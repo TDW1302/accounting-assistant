@@ -3,7 +3,7 @@ package be.vercauteren.accounting.controller;
 import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.dto.PeppolDocumentResponse;
 import be.vercauteren.accounting.dto.PeppolImportRequest;
-import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.dto.SupplierResponse;
 import be.vercauteren.accounting.service.PeppolService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -43,7 +43,7 @@ public class PeppolController {
     }
 
     @PostMapping("/import-suppliers")
-    public List<Supplier> importSuppliers() {
+    public List<SupplierResponse> importSuppliers() {
         return peppolService.importSuppliers();
     }
 }
