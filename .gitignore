@@ -18,6 +18,9 @@ frontend/public/opencv/
 # IDE
 .idea/
 
+# Claude Code local settings
+.claude/
+
 # Uploads
 uploads/
 data/
