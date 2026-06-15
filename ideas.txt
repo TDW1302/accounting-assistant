@@ -1,0 +1,100 @@
+# Ideas & Future Scope
+
+## Falco outbound (automated upload)
+- API docs: https://docs.falco-app.be/docs/getting-started
+- Developer portal: https://dev.falco-app.be
+- Auth: X-Falco-Api-Key + X-Falco-App-Secret headers
+- Supports: PDF upload with metadata, UBL upload, Peppol sending, delivery status tracking
+- Falco does NOT extract data from PDFs — all fields must be provided in the request
+- Sandbox environment available for testing
+
+## Gmail import
+- Automatic invoice import from Gmail (PDF attachments)
+
+## Batch upload
+- Upload multiple PDFs at once, each creating a separate invoice (with AI extraction per file)
+
+## Bank statement-based numbering (CODA)
+- Number invoices in order they appear on bank statements to match accounting sequence
+- Requires matching invoices to bank transactions (by IBAN + amount + payment date)
+- Blocked: Falco API does not expose CODA endpoints as of Feb 2026
+- Alternative: manual .cod file upload and parsing
+
+## OCR for scanned PDFs
+- Integrate OCR (e.g. Tesseract) to extract text from image PDFs
+- Enables AI extraction for invoices that currently fall back silently
+
+## Automated tests
+- Unit tests (backend services, controllers) + E2E tests (frontend)
+
+## PDF backup strategy
+- NAS backup, copy to network device — TBD
+
+## Infrastructure
+- Current NAS: Synology DS218play (ARM, 1GB RAM, no Docker) — too limited
+- Planned NAS: Ugreen DXP4800 Plus (Intel x86, 8GB DDR5, Docker) — target host
+- Development and testing done locally for now
+
+---
+
+# Historical Reference
+
+## Original Excel structure (Facturier.xlsx)
+- Source: C:\Users\verca\OneDrive\Documents\Facturier.xlsx
+- One sheet per year (2024, 2025, 2026), numbering restarts at 1
+- Columns: Number, Supplier, Amount, Reception date, Payment date, Peppol ("V"), Comments
+- Purchase/sale: "Oliver James" invoices = sales, rest = purchases
+- Sales highlighted green (#C6EFCE) on amount cell
+
+## Original workflow
+1. Receive invoices (Peppol or manually)
+2. Record in Excel
+3. Sequential numbering
+4. Rename PDFs
+5. Upload to Falco
+
+## Legacy NAS storage
+- Before 2026: \\NAS\homes\VITe\{year}\Done\
+- Since 2026: \\NAS\homes\VITe\{year}\
+
+## v1 scope (implemented)
+- Invoice CRUD replacing Excel
+- PDF file renaming + upload with year-based storage
+- Sequential numbering per year
+- AI-powered PDF extraction
+- Session/cookie auth with RBAC (ADMIN, USER, VIEWER)
+- User management with password expiration
+- Falco Peppol integration (list, import, supplier import)
+
+---
+
+# Security Audit — Completed 2026-03-16
+
+## Round 1
+- CSRF protection (cookie-based XSRF-TOKEN) — SecurityConfig.java
+- Rate limiting login/register (5/15min/IP) — RateLimitFilter.java
+- Invoice numbering race condition (SERIALIZABLE + retry) — InvoiceService.java
+- File type validation (extension + content type whitelist) — InvoiceService.java
+- Authorization on delete (creator or ADMIN) — InvoiceService.java
+- Year change prevented in update — InvoiceService.java
+- Session cookie secure=true — application.properties
+- Password policy (8+ chars, mixed) — DTOs
+- CORS configured — SecurityConfig.java, application.properties
+- Year/amount validation (@Min/@Max, @DecimalMin) — InvoiceRequest.java
+- Security audit logging — AuthService.java
+- File+DB transaction compensation — InvoiceService.java
+- Exception logging — InvoiceService.java
+- CSP header — nginx.conf
+- Source maps disabled in prod — angular.json
+- @NotNull on primitive removed — Invoice.java
+- Optional<User> instead of nullable — AuthService.java
+- Peppol pagination for supplier import — PeppolService.java
+- SQL wildcards escaped — InvoiceSpecification.java
+
+## Round 2 (regression fixes)
+- RateLimitFilter memory leak → @Scheduled cleanup
+- LIKE escape char explicit ('\\')
+- File extension validation edge case (no dot)
+- CORS origins trimmed
+- Peppol pagination max 50 pages guard
+- TransactionTemplate for invoice creation (proxy self-invocation fix)
