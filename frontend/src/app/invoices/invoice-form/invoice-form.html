@@ -2,6 +2,12 @@
   <h1>{{ isEdit ? 'Modifier la facture' : 'Nouvelle facture' }}</h1>
 </div>
 
+@if (linkToNumber) {
+  <div class="sub-invoice-banner">
+    Sous-facture du numéro {{ linkToNumber }}
+  </div>
+}
+
 <form [formGroup]="form" (ngSubmit)="save()">
   <div class="form-row">
     <div class="form-group">
@@ -12,10 +18,12 @@
         <span class="field-error">L'année est obligatoire</span>
       }
     </div>
-    <div class="form-group">
-      <label for="subNumber">Sous-numéro</label>
-      <input id="subNumber" type="number" formControlName="subNumber" placeholder="Optionnel">
-    </div>
+    @if (isEdit && form.get('subNumber')?.value) {
+      <div class="form-group">
+        <label for="subNumber">Sous-numéro</label>
+        <input id="subNumber" type="number" formControlName="subNumber" readonly>
+      </div>
+    }
     <div class="form-group">
       <label for="type">Type <span class="required">*</span></label>
       <select id="type" formControlName="type"

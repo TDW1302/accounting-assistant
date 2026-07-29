@@ -32,6 +32,7 @@ export class InvoiceForm implements OnInit {
   submitted = false;
   showScanner = false;
   scannerImageFile: File | null = null;
+  linkToNumber: number | null = null;
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
     { value: 'PURCHASE', label: 'Achat' },
@@ -63,6 +64,15 @@ export class InvoiceForm implements OnInit {
       scopeDate: [null],
       fileDetail: [null],
     });
+
+    // Sub-invoice mode: read query params
+    const linkTo = this.route.snapshot.queryParamMap.get('linkTo');
+    const yearParam = this.route.snapshot.queryParamMap.get('year');
+    if (linkTo && yearParam) {
+      this.linkToNumber = +linkTo;
+      this.form.patchValue({ year: +yearParam });
+      this.form.get('year')!.disable();
+    }
 
     this.supplierService.list().subscribe(s => this.suppliers.set(s));
 
@@ -154,17 +164,19 @@ export class InvoiceForm implements OnInit {
     this.submitted = true;
     if (this.form.invalid) return;
 
+    const raw = this.form.getRawValue();
     const req: InvoiceRequest = {
-      ...this.form.value,
-      supplierId: +this.form.value.supplierId,
-      subNumber: this.form.value.subNumber ? +this.form.value.subNumber : null,
-      amountIncVat: this.form.value.amountIncVat != null ? +this.form.value.amountIncVat : null,
-      amountExVat: this.form.value.amountExVat != null ? +this.form.value.amountExVat : null,
-      vatAmount: this.form.value.vatAmount != null ? +this.form.value.vatAmount : null,
-      paymentDate: this.form.value.paymentDate || null,
-      scopeDate: this.form.value.scopeDate || null,
-      comment: this.form.value.comment || null,
-      fileDetail: this.form.value.fileDetail || null,
+      ...raw,
+      supplierId: +raw.supplierId,
+      subNumber: raw.subNumber ? +raw.subNumber : null,
+      amountIncVat: raw.amountIncVat != null ? +raw.amountIncVat : null,
+      amountExVat: raw.amountExVat != null ? +raw.amountExVat : null,
+      vatAmount: raw.vatAmount != null ? +raw.vatAmount : null,
+      paymentDate: raw.paymentDate || null,
+      scopeDate: raw.scopeDate || null,
+      comment: raw.comment || null,
+      fileDetail: raw.fileDetail || null,
+      linkToNumber: this.linkToNumber,
     };
 
     const op = this.isEdit

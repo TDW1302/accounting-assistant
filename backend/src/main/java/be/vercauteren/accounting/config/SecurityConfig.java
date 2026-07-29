@@ -59,8 +59,10 @@ public class SecurityConfig {
                     res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/config").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/import/**").hasRole("ADMIN")
+                .requestMatchers("/api/inbox/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/peppol/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/peppol/**").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.GET, "/api/invoices/**", "/api/suppliers/**").authenticated()

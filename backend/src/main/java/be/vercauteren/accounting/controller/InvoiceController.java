@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -72,11 +73,15 @@ public class InvoiceController {
         invoiceService.delete(id);
     }
 
+    private static final Set<String> EXTRACT_ALLOWED_TYPES = Set.of(
+        "application/pdf", "image/jpeg", "image/png", "image/gif", "image/bmp", "image/tiff", "image/webp"
+    );
+
     @PostMapping("/extract")
     public InvoiceExtractionResult extract(@RequestParam("file") MultipartFile file) throws IOException {
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.equalsIgnoreCase("application/pdf")) {
-            throw new IllegalArgumentException("Only PDF files are accepted for extraction");
+        if (contentType == null || !EXTRACT_ALLOWED_TYPES.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("Only PDF and image files are accepted for extraction");
         }
         return invoiceExtractionService.extract(file);
     }

@@ -91,6 +91,7 @@ public class InvoiceService {
     /**
      * Creates an invoice with SERIALIZABLE isolation and retry logic for concurrent numbering conflicts.
      * Uses TransactionTemplate to avoid Spring proxy self-invocation issues.
+     * When linkToNumber is set, creates a sub-invoice sharing the same number.
      */
     public InvoiceResponse create(InvoiceRequest request) {
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
@@ -101,13 +102,57 @@ public class InvoiceService {
                 return txTemplate.execute(status -> {
                     Supplier supplier = supplierService.getOrThrow(request.supplierId());
 
-                    int nextNumber = invoiceRepository.findFirstByYearOrderByNumberDesc(request.year())
-                        .map(inv -> inv.getNumber() + 1)
-                        .orElse(1);
+                    int assignedNumber;
+                    Integer assignedSubNumber;
+
+                    if (request.linkToNumber() != null) {
+                        // Sub-invoice mode
+                        assignedNumber = request.linkToNumber();
+                        List<Invoice> siblings = invoiceRepository.findByYearAndNumberOrderBySubNumberAsc(
+                            request.year(), assignedNumber);
+
+                        if (siblings.isEmpty()) {
+                            throw new EntityNotFoundException(
+                                "No invoice found with number " + assignedNumber + " for year " + request.year());
+                        }
+
+                        // Promote original invoice to .1 if it has no subNumber yet
+                        Invoice first = siblings.getFirst();
+                        if (first.getSubNumber() == null) {
+                            first.setSubNumber(1);
+                            invoiceRepository.save(first);
+                            // Rename the file if it exists
+                            if (first.getFilePath() != null) {
+                                try {
+                                    String newName = fileNameGenerator.generate(first);
+                                    String newPath = fileStorageService.rename(
+                                        first.getFilePath(), newName, first.getYear());
+                                    first.setFilePath(newPath);
+                                    invoiceRepository.save(first);
+                                } catch (IOException e) {
+                                    log.warn("Failed to rename file for promoted invoice {}.1: {}",
+                                        assignedNumber, e.getMessage());
+                                }
+                            }
+                        }
+
+                        // Determine next sub-number with lock
+                        int maxSub = invoiceRepository.findFirstByYearAndNumberOrderBySubNumberDesc(
+                                request.year(), assignedNumber)
+                            .map(inv -> inv.getSubNumber() != null ? inv.getSubNumber() : 1)
+                            .orElse(1);
+                        assignedSubNumber = maxSub + 1;
+                    } else {
+                        // Normal mode: auto-increment number
+                        assignedNumber = invoiceRepository.findFirstByYearOrderByNumberDesc(request.year())
+                            .map(inv -> inv.getNumber() + 1)
+                            .orElse(1);
+                        assignedSubNumber = null;
+                    }
 
                     Invoice invoice = Invoice.builder()
-                        .number(nextNumber)
-                        .subNumber(request.subNumber())
+                        .number(assignedNumber)
+                        .subNumber(assignedSubNumber)
                         .year(request.year())
                         .type(request.type())
                         .supplier(supplier)
@@ -147,7 +192,10 @@ public class InvoiceService {
             throw new IllegalArgumentException("Cannot change invoice year. Delete and recreate the invoice instead.");
         }
 
-        invoice.setSubNumber(request.subNumber());
+        if (invoice.getSubNumber() != null && request.subNumber() != null
+                && !invoice.getSubNumber().equals(request.subNumber())) {
+            throw new IllegalArgumentException("Cannot change sub-number of a sub-invoice.");
+        }
         invoice.setType(request.type());
         invoice.setSupplier(supplier);
         invoice.setAmountIncVat(request.amountIncVat());

@@ -12,9 +12,54 @@
       <span class="badge-search">Recherche active</span>
       <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
     }
+    @if (authService.hasRole('ADMIN')) {
+      <button class="btn btn-secondary" (click)="scanInbox()" [disabled]="scanning()">
+        {{ scanning() ? 'Scan en cours...' : 'Scanner boîte de dépôt' }}
+      </button>
+      <button class="btn btn-secondary" (click)="excelInput.click()" [disabled]="importing()">
+        {{ importing() ? 'Import en cours...' : 'Importer Excel' }}
+      </button>
+      <input #excelInput type="file" accept=".xlsx" hidden (change)="onImportFile($event)">
+    }
+    <a class="btn" routerLink="/invoices/batch">Upload multiple</a>
     <a class="btn btn-primary" routerLink="/invoices/new">+ Nouvelle facture</a>
   </div>
 </div>
+
+@if (scanResult(); as scan) {
+  <div class="import-result">
+    <strong>Scan terminé :</strong>
+    {{ scan.filesProcessed }} fichiers traités,
+    {{ scan.matched }} rattachés,
+    {{ scan.created }} créés,
+    {{ scan.errors }} erreurs.
+    @if (scan.errorFiles.length > 0) {
+      <ul>
+        @for (f of scan.errorFiles; track f) {
+          <li>{{ f }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="scanResult.set(null)">Fermer</button>
+  </div>
+}
+
+@if (importResult(); as result) {
+  <div class="import-result">
+    <strong>Import terminé :</strong>
+    {{ result.invoicesImported }} factures importées,
+    {{ result.suppliersCreated }} fournisseurs créés,
+    {{ result.rowsSkipped }} lignes ignorées.
+    @if (result.warnings.length > 0) {
+      <ul>
+        @for (w of result.warnings; track w) {
+          <li>{{ w }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="importResult.set(null)">Fermer</button>
+  </div>
+}
 
 <div class="search-bar">
   <div class="search-row">
@@ -95,6 +140,8 @@
         <td>{{ inv.comment }}</td>
         <td class="actions">
           <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
+          <a class="btn btn-sm btn-secondary" [routerLink]="['/invoices/new']"
+             [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
           <button class="btn btn-sm btn-danger" (click)="deleteInvoice(inv)">Supprimer</button>
         </td>
       </tr>

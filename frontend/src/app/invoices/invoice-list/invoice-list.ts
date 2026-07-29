@@ -4,6 +4,10 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
+import { AuthService } from '../../services/auth.service';
+import { ImportService, ExcelImportResponse } from '../../services/import.service';
+import { InboxService, InboxScanResult } from '../../services/inbox.service';
+import { ConfigService } from '../../services/config.service';
 import { Invoice } from '../../models/invoice.model';
 import { Supplier } from '../../models/supplier.model';
 
@@ -16,11 +20,19 @@ import { Supplier } from '../../models/supplier.model';
 export class InvoiceList implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
   private readonly supplierService = inject(SupplierService);
+  readonly authService = inject(AuthService);
+  private readonly importService = inject(ImportService);
+  private readonly inboxService = inject(InboxService);
+  private readonly configService = inject(ConfigService);
 
   invoices = signal<Invoice[]>([]);
   selectedYear = signal(new Date().getFullYear());
   years: number[] = [];
   suppliers = signal<Supplier[]>([]);
+  importResult = signal<ExcelImportResponse | null>(null);
+  importing = signal(false);
+  scanResult = signal<InboxScanResult | null>(null);
+  scanning = signal(false);
 
   searchActive = false;
   keyword = '';
@@ -94,5 +106,44 @@ export class InvoiceList implements OnInit {
   formatNumber(inv: Invoice): string {
     const num = String(inv.number).padStart(3, '0');
     return inv.subNumber ? `${num}.${inv.subNumber}` : num;
+  }
+
+  onImportFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.importing.set(true);
+    this.importResult.set(null);
+    this.importService.importExcel(file).subscribe({
+      next: (result) => {
+        this.importResult.set(result);
+        this.importing.set(false);
+        this.load();
+        this.supplierService.list().subscribe(data => this.suppliers.set(data));
+      },
+      error: () => {
+        this.importing.set(false);
+        alert('Erreur lors de l\'import Excel.');
+      }
+    });
+    input.value = '';
+  }
+
+  scanInbox(): void {
+    this.scanning.set(true);
+    this.scanResult.set(null);
+    this.inboxService.scan().subscribe({
+      next: (result) => {
+        this.scanResult.set(result);
+        this.scanning.set(false);
+        this.load();
+        this.configService.loadConfig();
+      },
+      error: () => {
+        this.scanning.set(false);
+        alert('Erreur lors du scan de la boîte de dépôt.');
+      }
+    });
   }
 }

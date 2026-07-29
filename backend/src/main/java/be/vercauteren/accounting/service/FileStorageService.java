@@ -30,6 +30,16 @@ public class FileStorageService {
         return target.toString();
     }
 
+    public String rename(String oldFilePath, String newFilename, Integer year) throws IOException {
+        Path yearDir = uploadDirectory.resolve(String.valueOf(year));
+        Path target = yearDir.resolve(newFilename);
+        if (!target.normalize().startsWith(uploadDirectory.normalize())) {
+            throw new IOException("Invalid file path: path traversal detected");
+        }
+        Files.move(Path.of(oldFilePath), target, StandardCopyOption.REPLACE_EXISTING);
+        return target.toString();
+    }
+
     public void delete(String filePath) throws IOException {
         Path path = Path.of(filePath);
         Files.deleteIfExists(path);

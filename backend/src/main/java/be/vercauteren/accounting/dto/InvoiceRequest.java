@@ -24,5 +24,6 @@ public record InvoiceRequest(
     @NotNull DateScope dateScope,
     LocalDate scopeDate,
     String fileDetail,
-    String falcoDocumentId
+    String falcoDocumentId,
+    Integer linkToNumber
 ) {}

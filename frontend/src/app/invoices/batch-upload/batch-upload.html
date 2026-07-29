@@ -1,0 +1,191 @@
+<div class="page-header">
+  <h1>Upload multiple</h1>
+  <div class="header-actions">
+    <a class="btn" routerLink="/invoices">Retour aux factures</a>
+  </div>
+</div>
+
+@if (step() === 'select' || (step() === 'review' && files().length > 0)) {
+  <div class="upload-zone">
+    <label class="drop-area" for="fileInput">
+      <span class="drop-icon">+</span>
+      <span>Sélectionner des fichiers PDF ou images</span>
+      <span class="drop-hint">Plusieurs fichiers acceptés</span>
+    </label>
+    <input id="fileInput" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp"
+           (change)="onFilesSelected($event)" hidden>
+  </div>
+}
+
+@if (step() === 'review') {
+  @if (extractingCount() > 0) {
+    <div class="extraction-progress">
+      Extraction en cours... ({{ extractingCount() }} fichier(s) restant(s))
+    </div>
+  }
+
+  @for (group of groupedFiles(); track group.supplierId) {
+    <div class="supplier-group">
+      <div class="group-header">
+        <span class="group-name">{{ group.supplierName }}</span>
+        <span class="group-count">{{ group.items.length }} fichier(s)</span>
+        @if (group.items.length > 1 && group.supplierId != null) {
+          <label class="sub-invoice-toggle">
+            <input type="checkbox" [checked]="group.items[0].groupAsSubInvoices"
+                   (change)="toggleGroupSubInvoices(group.supplierId)">
+            Sous-factures
+          </label>
+        }
+      </div>
+
+      @for (item of group.items; track item.file.name; let idx = $index) {
+        <div class="batch-item" [class.item-error]="item.status === 'error'"
+             [class.item-created]="item.status === 'created'">
+          <div class="item-header">
+            <span class="file-name">{{ item.file.name }}</span>
+            <span class="status-badge"
+                  [class.status-pending]="item.status === 'pending'"
+                  [class.status-extracting]="item.status === 'extracting'"
+                  [class.status-extracted]="item.status === 'extracted'"
+                  [class.status-error]="item.status === 'error'"
+                  [class.status-creating]="item.status === 'creating'"
+                  [class.status-created]="item.status === 'created'">
+              @switch (item.status) {
+                @case ('pending') { En attente }
+                @case ('extracting') { Extraction... }
+                @case ('extracted') { Extrait }
+                @case ('error') { Erreur }
+                @case ('creating') { Création... }
+                @case ('created') { Créé }
+              }
+            </span>
+            @if (item.status !== 'creating' && item.status !== 'created') {
+              <button class="btn btn-sm btn-danger" (click)="removeFile(item)">Retirer</button>
+            }
+          </div>
+
+          @if (item.status !== 'creating' && item.status !== 'created') {
+            <div class="item-fields">
+              <div class="field">
+                <label>Type</label>
+                <select [(ngModel)]="item.type">
+                  @for (t of invoiceTypes; track t.value) {
+                    <option [ngValue]="t.value">{{ t.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Fournisseur</label>
+                <select [(ngModel)]="item.supplierId" [class.invalid]="!item.supplierId">
+                  <option [ngValue]="null">-- Sélectionner --</option>
+                  @for (s of suppliers(); track s.id) {
+                    <option [ngValue]="s.id">{{ s.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Montant TTC</label>
+                <input type="number" [(ngModel)]="item.amountIncVat" step="0.01" placeholder="0.00">
+              </div>
+
+              <div class="field">
+                <label>Montant HTVA</label>
+                <input type="number" [(ngModel)]="item.amountExVat" step="0.01" placeholder="0.00">
+              </div>
+
+              <div class="field">
+                <label>TVA</label>
+                <input type="number" [(ngModel)]="item.vatAmount" step="0.01" placeholder="0.00">
+              </div>
+
+              <div class="field">
+                <label>Date réception</label>
+                <input type="date" [(ngModel)]="item.receptionDate" [class.invalid]="!item.receptionDate">
+              </div>
+
+              <div class="field">
+                <label>Date paiement</label>
+                <input type="date" [(ngModel)]="item.paymentDate">
+              </div>
+
+              <div class="field">
+                <label>Période</label>
+                <select [(ngModel)]="item.dateScope">
+                  @for (ds of dateScopes; track ds.value) {
+                    <option [ngValue]="ds.value">{{ ds.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Date période</label>
+                <input type="date" [(ngModel)]="item.scopeDate">
+              </div>
+
+              <div class="field">
+                <label>Détail fichier</label>
+                <input type="text" [(ngModel)]="item.fileDetail" placeholder="ex: PneuHiver">
+              </div>
+
+              <div class="field">
+                <label>Commentaire</label>
+                <input type="text" [(ngModel)]="item.comment">
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="batch-actions">
+    <button class="btn btn-primary" [disabled]="!canCreate()" (click)="createAll()">
+      Créer toutes les factures ({{ files().length }})
+    </button>
+    @if (!canCreate() && allExtracted()) {
+      <span class="validation-hint">Chaque facture doit avoir un fournisseur, un type et une date de réception.</span>
+    }
+  </div>
+}
+
+@if (step() === 'creating') {
+  <div class="creating-progress">
+    <h2>Création en cours...</h2>
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="progress().total ? (progress().current / progress().total * 100) : 0"></div>
+    </div>
+    <p>{{ progress().current }} / {{ progress().total }}</p>
+
+    @for (item of files(); track item.file.name) {
+      <div class="progress-item">
+        <span>{{ item.file.name }}</span>
+        <span class="status-badge"
+              [class.status-creating]="item.status === 'creating'"
+              [class.status-created]="item.status === 'created'"
+              [class.status-error]="item.status === 'error'">
+          @switch (item.status) {
+            @case ('creating') { Création... }
+            @case ('created') { Créé }
+            @case ('error') { Erreur }
+            @default { En attente }
+          }
+        </span>
+      </div>
+    }
+  </div>
+}
+
+@if (step() === 'done') {
+  <div class="done-summary">
+    <h2>Terminé</h2>
+    <p>{{ resultSummary().created }} facture(s) créée(s)</p>
+    @if (resultSummary().errors > 0) {
+      <p class="error-count">{{ resultSummary().errors }} erreur(s)</p>
+    }
+    <div class="done-actions">
+      <a class="btn btn-primary" routerLink="/invoices">Voir les factures</a>
+    </div>
+  </div>
+}

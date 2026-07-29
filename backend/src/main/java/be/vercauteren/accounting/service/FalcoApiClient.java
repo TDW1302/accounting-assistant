@@ -6,12 +6,14 @@ import java.time.LocalDate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "app.falco.enabled", havingValue = "true")
 public class FalcoApiClient {
 
     @Value("${app.falco.base-url}")

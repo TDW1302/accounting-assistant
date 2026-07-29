@@ -17,6 +17,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'invoices/batch',
+    loadComponent: () => import('./invoices/batch-upload/batch-upload').then(m => m.BatchUpload),
+    canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
+  },
+  {
     path: 'invoices/new',
     loadComponent: () => import('./invoices/invoice-form/invoice-form').then(m => m.InvoiceForm),
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]

@@ -17,11 +17,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/peppol")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.falco.enabled", havingValue = "true")
 public class PeppolController {
 
     private final PeppolService peppolService;

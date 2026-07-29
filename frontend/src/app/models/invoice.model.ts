@@ -39,6 +39,26 @@ export interface InvoiceExtractionResult {
   comment: string | null;
 }
 
+export interface BatchInvoiceItem {
+  file: File;
+  status: 'pending' | 'extracting' | 'extracted' | 'error' | 'creating' | 'created';
+  extraction: InvoiceExtractionResult | null;
+  year: number;
+  type: InvoiceType;
+  supplierId: number | null;
+  amountIncVat: number | null;
+  amountExVat: number | null;
+  vatAmount: number | null;
+  receptionDate: string;
+  paymentDate: string | null;
+  peppol: boolean;
+  comment: string | null;
+  dateScope: DateScope;
+  scopeDate: string | null;
+  fileDetail: string | null;
+  groupAsSubInvoices: boolean;
+}
+
 export interface InvoiceRequest {
   subNumber: number | null;
   year: number;
@@ -55,4 +75,5 @@ export interface InvoiceRequest {
   dateScope: DateScope;
   scopeDate: string | null;
   fileDetail: string | null;
+  linkToNumber: number | null;
 }

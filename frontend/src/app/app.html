@@ -6,8 +6,14 @@
     </button>
     <div class="nav-menu" [class.open]="menuOpen">
       <div class="nav-links">
-        <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen = false">Factures</a>
-        <a routerLink="/peppol" routerLinkActive="active" (click)="menuOpen = false">Peppol</a>
+        <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen = false">Factures
+          @if (configService.inboxErrorCount() > 0) {
+            <span class="badge-error">{{ configService.inboxErrorCount() }}</span>
+          }
+        </a>
+        @if (configService.peppolEnabled()) {
+          <a routerLink="/peppol" routerLinkActive="active" (click)="menuOpen = false">Peppol</a>
+        }
         <a routerLink="/suppliers" routerLinkActive="active" (click)="menuOpen = false">Fournisseurs</a>
         @if (authService.hasRole('ADMIN')) {
           <a routerLink="/users" routerLinkActive="active" (click)="menuOpen = false">Utilisateurs</a>
