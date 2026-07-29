@@ -73,11 +73,8 @@ SESSION_COOKIE_SECURE=true
 ANTHROPIC_API_KEY=...
 ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 
-# Falco (Peppol) — laisser désactivé si non utilisé
+# Falco (Peppol) — NON UTILISÉ actuellement, laisser désactivé
 FALCO_ENABLED=false
-FALCO_API_KEY=...
-FALCO_APP_SECRET=...
-FALCO_BASE_URL=https://api.sandbox.falco-app.be/v1
 
 # CORS — domaine réel de prod, pas localhost
 CORS_ALLOWED_ORIGINS=https://tdw1302.duckdns.org:8999
@@ -91,6 +88,7 @@ Points d'attention :
 - `SESSION_COOKIE_SECURE=true` est indispensable ici puisque l'accès se fait en HTTPS derrière Caddy (contrairement à `.env.example` qui met `false` pour du dev local en HTTP).
 - `CORS_ALLOWED_ORIGINS` doit correspondre exactement à l'URL publique utilisée, sinon le frontend ne pourra pas appeler l'API.
 - `DUCKDNS_TOKEN` : récupérable sur [duckdns.org](https://www.duckdns.org) une fois connecté avec le compte qui gère le domaine `tdw1302.duckdns.org`.
+- **Falco/Peppol non utilisé pour l'instant** : avec `FALCO_ENABLED=false`, les beans `FalcoApiClient`/`PeppolService`/`PeppolController` ne sont même pas créés (`@ConditionalOnProperty`) et le lien Peppol est caché dans la navbar — inutile de renseigner `FALCO_API_KEY` / `FALCO_APP_SECRET` / `FALCO_BASE_URL` tant que ce n'est pas activé, ils peuvent rester absents du `.env`.
 
 ---
 
@@ -169,7 +167,8 @@ docker compose -f docker-compose.prod.yml ps
 | Certificat TLS | Aucun — Caddy le renouvelle automatiquement tout seul (DNS challenge DuckDNS) | Rien à faire |
 | `DUCKDNS_TOKEN` | Ne change quasi jamais, le domaine DuckDNS n'expire pas tant que le token est valide | À revérifier seulement si le site n'est plus joignable en HTTPS |
 | Token GHCR (si le package est privé et qu'un `docker login` a été fait avec un PAT à expiration définie) | Un PAT classique peut avoir une date d'expiration → le prochain `docker pull`/`up` échouera avec une erreur d'auth | Regénérer un PAT (`read:packages`) et refaire `docker login ghcr.io -u TDW1302 --password-stdin` |
-| `ANTHROPIC_API_KEY` / `FALCO_API_KEY` | Clés côté fournisseur externe, peuvent être révoquées/tourner sans que tu le saches | Si l'extraction IA ou Peppol échoue silencieusement (comportement voulu par design — best effort), vérifier les logs `app` et régénérer la clé si besoin |
+| `ANTHROPIC_API_KEY` | Clé côté fournisseur externe, peut être révoquée/tourner sans que tu le saches | Si l'extraction IA échoue silencieusement (comportement voulu par design — best effort), vérifier les logs `app` et régénérer la clé si besoin |
+| Falco / Peppol | **Non utilisé actuellement** (`FALCO_ENABLED=false`) | Rien à surveiller ici tant que ce n'est pas activé — ignorer toute mention de Falco dans le code/les logs |
 | Image `:latest` | Peut être très en retard par rapport à `main` si aucun déploiement n'a eu lieu depuis longtemps | Voir mise à jour ci-dessous |
 
 ### 3. Mettre à jour vers la dernière version
