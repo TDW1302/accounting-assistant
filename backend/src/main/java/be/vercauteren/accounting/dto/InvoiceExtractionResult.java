@@ -1,6 +1,7 @@
 package be.vercauteren.accounting.dto;
 
 import be.vercauteren.accounting.entity.DateScope;
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.InvoiceType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,5 +17,6 @@ public record InvoiceExtractionResult(
     LocalDate paymentDate,
     DateScope dateScope,
     LocalDate scopeDate,
-    String comment
+    String comment,
+    ExpenseCategory suggestedCategory
 ) {}

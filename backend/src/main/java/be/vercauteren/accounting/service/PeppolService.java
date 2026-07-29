@@ -184,7 +184,8 @@ public class PeppolService {
             supplier.getId(),
             supplier.getName(),
             supplier.getAlias(),
-            supplier.getEnterpriseNumber()
+            supplier.getEnterpriseNumber(),
+            supplier.getCategory()
         );
     }
 

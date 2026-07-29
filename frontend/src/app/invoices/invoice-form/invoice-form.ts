@@ -4,7 +4,7 @@ import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } 
 import { switchMap } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
-import { Supplier } from '../../models/supplier.model';
+import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier, SupplierRequest } from '../../models/supplier.model';
 import { InvoiceRequest, DateScope, InvoiceType } from '../../models/invoice.model';
 import { DocumentScanner } from '../document-scanner/document-scanner';
 
@@ -33,6 +33,13 @@ export class InvoiceForm implements OnInit {
   showScanner = false;
   scannerImageFile: File | null = null;
   linkToNumber: number | null = null;
+
+  unmatchedSupplierName: string | null = null;
+  newSupplierCategory: ExpenseCategory | null = null;
+  creatingSupplier = false;
+
+  readonly categories: { value: ExpenseCategory; label: string }[] =
+    EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
 
   readonly invoiceTypes: { value: InvoiceType; label: string }[] = [
     { value: 'PURCHASE', label: 'Achat' },
@@ -137,6 +144,8 @@ export class InvoiceForm implements OnInit {
   private triggerExtraction(): void {
     if (this.selectedFile && !this.isEdit && this.autoExtract) {
       this.extracting = true;
+      this.unmatchedSupplierName = null;
+      this.newSupplierCategory = null;
       this.invoiceService.extract(this.selectedFile).subscribe({
         next: (result) => {
           const patch: Record<string, unknown> = {};
@@ -151,6 +160,12 @@ export class InvoiceForm implements OnInit {
           if (result.scopeDate) patch['scopeDate'] = result.scopeDate;
           if (result.comment) patch['comment'] = result.comment;
           this.form.patchValue(patch);
+
+          if (!result.supplierId && result.supplierName) {
+            this.unmatchedSupplierName = result.supplierName;
+            this.newSupplierCategory = result.suggestedCategory;
+          }
+
           this.extracting = false;
         },
         error: () => {
@@ -158,6 +173,37 @@ export class InvoiceForm implements OnInit {
         },
       });
     }
+  }
+
+  createSupplierFromExtraction(): void {
+    if (!this.unmatchedSupplierName) return;
+
+    this.creatingSupplier = true;
+    const req: SupplierRequest = {
+      name: this.unmatchedSupplierName,
+      alias: null,
+      enterpriseNumber: null,
+      category: this.newSupplierCategory,
+    };
+
+    this.supplierService.create(req).subscribe({
+      next: (supplier) => {
+        this.suppliers.update(list => [...list, supplier]);
+        this.form.patchValue({ supplierId: String(supplier.id) });
+        this.unmatchedSupplierName = null;
+        this.newSupplierCategory = null;
+        this.creatingSupplier = false;
+      },
+      error: () => {
+        this.creatingSupplier = false;
+        alert('Erreur lors de la création du fournisseur.');
+      },
+    });
+  }
+
+  dismissUnmatchedSupplier(): void {
+    this.unmatchedSupplierName = null;
+    this.newSupplierCategory = null;
   }
 
   save(): void {

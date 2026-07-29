@@ -9,6 +9,28 @@
   max-width: 800px;
 }
 
+.unmatched-supplier-banner {
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  max-width: 800px;
+
+  p {
+    margin: 0 0 0.5rem;
+    color: #92400e;
+  }
+
+  .form-row {
+    margin-bottom: 0.5rem;
+  }
+
+  .form-actions {
+    margin-top: 0;
+  }
+}
+
 form {
   max-width: 800px;
 }

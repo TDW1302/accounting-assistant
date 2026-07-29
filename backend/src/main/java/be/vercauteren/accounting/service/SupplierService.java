@@ -2,6 +2,7 @@ package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.SupplierRequest;
 import be.vercauteren.accounting.dto.SupplierResponse;
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
@@ -24,6 +25,13 @@ public class SupplierService {
             .toList();
     }
 
+    public List<SupplierResponse> findAll(ExpenseCategory category) {
+        if (category == null) return findAll();
+        return supplierRepository.findByCategory(category).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
     public SupplierResponse findById(Long id) {
         return toResponse(getOrThrow(id));
     }
@@ -34,6 +42,7 @@ public class SupplierService {
             .name(request.name())
             .alias(request.alias())
             .enterpriseNumber(request.enterpriseNumber())
+            .category(request.category())
             .build();
         return toResponse(supplierRepository.save(supplier));
     }
@@ -44,6 +53,7 @@ public class SupplierService {
         supplier.setName(request.name());
         supplier.setAlias(request.alias());
         supplier.setEnterpriseNumber(request.enterpriseNumber());
+        supplier.setCategory(request.category());
         return toResponse(supplierRepository.save(supplier));
     }
 
@@ -66,7 +76,8 @@ public class SupplierService {
             supplier.getId(),
             supplier.getName(),
             supplier.getAlias(),
-            supplier.getEnterpriseNumber()
+            supplier.getEnterpriseNumber(),
+            supplier.getCategory()
         );
     }
 }

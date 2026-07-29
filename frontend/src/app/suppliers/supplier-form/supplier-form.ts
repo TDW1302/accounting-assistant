@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
-import { SupplierRequest } from '../../models/supplier.model';
+import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, SupplierRequest } from '../../models/supplier.model';
 
 @Component({
   selector: 'app-supplier-form',
@@ -20,11 +20,15 @@ export class SupplierForm implements OnInit {
   isEdit = false;
   supplierId?: number;
 
+  readonly categories: { value: ExpenseCategory; label: string }[] =
+    EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
+
   ngOnInit(): void {
     this.form = this.fb.group({
       name: ['', Validators.required],
       alias: [null],
       enterpriseNumber: [null],
+      category: [null],
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -44,6 +48,7 @@ export class SupplierForm implements OnInit {
       name: this.form.value.name,
       alias: this.form.value.alias || null,
       enterpriseNumber: this.form.value.enterpriseNumber || null,
+      category: this.form.value.category || null,
     };
 
     const op = this.isEdit

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Invoice, InvoiceExtractionResult, InvoiceRequest } from '../models/invoice.model';
+import { ExpenseCategory } from '../models/supplier.model';
 
 export interface InvoiceSearchParams {
   year?: number;
@@ -11,6 +12,7 @@ export interface InvoiceSearchParams {
   dateFrom?: string;
   dateTo?: string;
   keyword?: string;
+  category?: ExpenseCategory;
 }
 
 @Injectable({ providedIn: 'root' })

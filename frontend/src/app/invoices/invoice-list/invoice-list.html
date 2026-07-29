@@ -93,6 +93,15 @@
       <label>Date au</label>
       <input type="date" [(ngModel)]="dateTo">
     </div>
+    <div class="search-field">
+      <label>Catégorie</label>
+      <select [(ngModel)]="category">
+        <option [ngValue]="null">-- Toutes --</option>
+        @for (c of categories; track c.value) {
+          <option [ngValue]="c.value">{{ c.label }}</option>
+        }
+      </select>
+    </div>
   </div>
   <div class="search-actions">
     <button class="btn btn-primary" (click)="search()">Rechercher</button>

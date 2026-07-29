@@ -9,7 +9,7 @@ import { ImportService, ExcelImportResponse } from '../../services/import.servic
 import { InboxService, InboxScanResult } from '../../services/inbox.service';
 import { ConfigService } from '../../services/config.service';
 import { Invoice } from '../../models/invoice.model';
-import { Supplier } from '../../models/supplier.model';
+import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
 
 @Component({
   selector: 'app-invoice-list',
@@ -41,6 +41,10 @@ export class InvoiceList implements OnInit {
   amountMax: number | null = null;
   dateFrom = '';
   dateTo = '';
+  category: ExpenseCategory | null = null;
+
+  readonly categories: { value: ExpenseCategory; label: string }[] =
+    EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
 
   ngOnInit(): void {
     const current = new Date().getFullYear();
@@ -68,6 +72,7 @@ export class InvoiceList implements OnInit {
     if (this.amountMax !== null && this.amountMax !== undefined) params['amountMax'] = this.amountMax;
     if (this.dateFrom) params['dateFrom'] = this.dateFrom;
     if (this.dateTo) params['dateTo'] = this.dateTo;
+    if (this.category) params['category'] = this.category;
 
     if (Object.keys(params).length === 0) {
       return;
@@ -85,6 +90,7 @@ export class InvoiceList implements OnInit {
     this.amountMax = null;
     this.dateFrom = '';
     this.dateTo = '';
+    this.category = null;
     this.load();
   }
 

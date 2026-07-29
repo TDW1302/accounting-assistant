@@ -3,6 +3,7 @@ package be.vercauteren.accounting.controller;
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.service.InvoiceExtractionService;
 import be.vercauteren.accounting.service.InvoiceService;
 import jakarta.validation.Valid;
@@ -47,8 +48,9 @@ public class InvoiceController {
         @RequestParam(required = false) BigDecimal amountMax,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
-        @RequestParam(required = false) String keyword) {
-        return invoiceService.search(year, supplierId, amountMin, amountMax, dateFrom, dateTo, keyword);
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) ExpenseCategory category) {
+        return invoiceService.search(year, supplierId, amountMin, amountMax, dateFrom, dateTo, keyword, category);
     }
 
     @GetMapping("/{id}")

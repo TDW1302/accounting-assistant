@@ -2,6 +2,8 @@ package be.vercauteren.accounting.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -33,4 +35,7 @@ public class Supplier {
     private String alias;
 
     private String enterpriseNumber;
+
+    @Enumerated(EnumType.STRING)
+    private ExpenseCategory category;
 }

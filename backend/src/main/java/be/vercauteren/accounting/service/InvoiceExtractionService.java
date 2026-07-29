@@ -3,6 +3,7 @@ package be.vercauteren.accounting.service;
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.entity.AiProvider;
 import be.vercauteren.accounting.entity.DateScope;
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.SupplierRepository;
@@ -263,7 +264,12 @@ public class InvoiceExtractionService {
         sb.append("  - YEARLY for annual subscriptions/insurance\n");
         sb.append("  - NONE if unclear\n");
         sb.append("- scopeDate: the reference date for the period in YYYY-MM-DD format (first day of the period), or null\n");
-        sb.append("- comment: invoice reference number or any useful info, or null\n\n");
+        sb.append("- comment: invoice reference number or any useful info, or null\n");
+        sb.append("- expenseCategory: if the supplier does NOT match any of the known suppliers listed below, ");
+        sb.append("classify the expense into one of: ")
+            .append(java.util.Arrays.stream(ExpenseCategory.values())
+                .map(Enum::name).collect(Collectors.joining(", ")))
+            .append(". Use AUTRE if unsure. If the supplier DOES match a known supplier, set this to null.\n\n");
     }
 
     private void appendSupplierList(StringBuilder sb, List<Supplier> suppliers) {
@@ -293,6 +299,9 @@ public class InvoiceExtractionService {
 
             InvoiceType type = parseEnum(node, "type", InvoiceType.class, InvoiceType.PURCHASE);
             DateScope dateScope = parseEnum(node, "dateScope", DateScope.class, DateScope.NONE);
+            ExpenseCategory suggestedCategory = supplierId == null
+                ? parseEnum(node, "expenseCategory", ExpenseCategory.class, null)
+                : null;
 
             return new InvoiceExtractionResult(
                 type,
@@ -305,7 +314,8 @@ public class InvoiceExtractionService {
                 dateOrNull(node, "paymentDate"),
                 dateScope,
                 dateOrNull(node, "scopeDate"),
-                blankToNull(node, "comment")
+                blankToNull(node, "comment"),
+                suggestedCategory
             );
         } catch (Exception e) {
             log.error("Failed to parse AI response: {}", json, e);
@@ -387,6 +397,6 @@ public class InvoiceExtractionService {
     }
 
     private InvoiceExtractionResult emptyResult() {
-        return new InvoiceExtractionResult(null, null, null, null, null, null, null, null, null, null, null);
+        return new InvoiceExtractionResult(null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

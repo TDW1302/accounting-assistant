@@ -1,5 +1,6 @@
 package be.vercauteren.accounting.specification;
 
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.entity.Supplier;
 import jakarta.persistence.criteria.Join;
@@ -18,6 +19,10 @@ public class InvoiceSpecification {
 
     public static Specification<Invoice> hasSupplier(Long supplierId) {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("id"), supplierId);
+    }
+
+    public static Specification<Invoice> hasCategory(ExpenseCategory category) {
+        return (root, query, cb) -> cb.equal(root.get("supplier").get("category"), category);
     }
 
     public static Specification<Invoice> amountBetween(BigDecimal min, BigDecimal max) {

@@ -1,4 +1,4 @@
-import { Supplier } from './supplier.model';
+import { ExpenseCategory, Supplier } from './supplier.model';
 
 export type InvoiceType = 'PURCHASE' | 'SALE';
 export type DateScope = 'DAILY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'NONE';
@@ -37,6 +37,7 @@ export interface InvoiceExtractionResult {
   dateScope: DateScope | null;
   scopeDate: string | null;
   comment: string | null;
+  suggestedCategory: ExpenseCategory | null;
 }
 
 export interface BatchInvoiceItem {

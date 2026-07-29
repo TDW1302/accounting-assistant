@@ -51,6 +51,30 @@
     </div>
   </div>
 
+  @if (unmatchedSupplierName) {
+    <div class="unmatched-supplier-banner">
+      <p>Fournisseur inconnu détecté : <strong>{{ unmatchedSupplierName }}</strong></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="newSupplierCategory">Catégorie de dépense suggérée</label>
+          <select id="newSupplierCategory" [(ngModel)]="newSupplierCategory" [ngModelOptions]="{standalone: true}">
+            <option [ngValue]="null">-- Aucune --</option>
+            @for (c of categories; track c.value) {
+              <option [ngValue]="c.value">{{ c.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary btn-sm" (click)="createSupplierFromExtraction()"
+                [disabled]="creatingSupplier">
+          {{ creatingSupplier ? 'Création...' : 'Créer ce fournisseur' }}
+        </button>
+        <button type="button" class="btn btn-sm" (click)="dismissUnmatchedSupplier()">Ignorer</button>
+      </div>
+    </div>
+  }
+
   <div class="form-row">
     <div class="form-group">
       <label for="amountIncVat">Montant TTC</label>

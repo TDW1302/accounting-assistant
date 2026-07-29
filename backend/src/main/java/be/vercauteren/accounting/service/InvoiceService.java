@@ -2,6 +2,7 @@ package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.entity.User;
@@ -55,7 +56,7 @@ public class InvoiceService {
 
     public List<InvoiceResponse> search(Integer year, Long supplierId, BigDecimal amountMin,
                                          BigDecimal amountMax, LocalDate dateFrom, LocalDate dateTo,
-                                         String keyword) {
+                                         String keyword, ExpenseCategory category) {
         Specification<Invoice> spec = Specification.where((Specification<Invoice>) null);
 
         if (year != null) {
@@ -72,6 +73,9 @@ public class InvoiceService {
         }
         if (keyword != null && !keyword.isBlank()) {
             spec = spec.and(InvoiceSpecification.keywordSearch(keyword.trim()));
+        }
+        if (category != null) {
+            spec = spec.and(InvoiceSpecification.hasCategory(category));
         }
 
         Sort sort = Sort.by(Sort.Direction.DESC, "year")
