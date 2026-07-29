@@ -41,8 +41,11 @@ export interface InvoiceExtractionResult {
 
 export interface BatchInvoiceItem {
   file: File;
-  status: 'pending' | 'extracting' | 'extracted' | 'error' | 'creating' | 'created';
+  status: 'pending' | 'extracting' | 'extracted' | 'matched' | 'error' | 'creating' | 'created';
   extraction: InvoiceExtractionResult | null;
+  matchedInvoiceId: number | null;
+  matchedNumber: number | null;
+  matchedSubNumber: number | null;
   year: number;
   type: InvoiceType;
   supplierId: number | null;

@@ -45,7 +45,7 @@
             <span class="file-name">{{ item.file.name }}</span>
             <span class="status-badge"
                   [class.status-pending]="item.status === 'pending'"
-                  [class.status-extracting]="item.status === 'extracting'"
+                  [class.status-extracting]="item.status === 'extracting' || item.status === 'matched'"
                   [class.status-extracted]="item.status === 'extracted'"
                   [class.status-error]="item.status === 'error'"
                   [class.status-creating]="item.status === 'creating'"
@@ -54,6 +54,7 @@
                 @case ('pending') { En attente }
                 @case ('extracting') { Extraction... }
                 @case ('extracted') { Extrait }
+                @case ('matched') { Facture existante }
                 @case ('error') { Erreur }
                 @case ('creating') { Création... }
                 @case ('created') { Créé }
@@ -64,7 +65,14 @@
             }
           </div>
 
-          @if (item.status !== 'creating' && item.status !== 'created') {
+          @if (item.status === 'matched') {
+            <div class="item-matched-info">
+              Sera liée à la facture existante n°{{ item.matchedNumber }}@if (item.matchedSubNumber) {.{{ item.matchedSubNumber }}}
+              — {{ supplierName(item.supplierId) }} ({{ item.receptionDate }})
+            </div>
+          }
+
+          @if (item.status !== 'creating' && item.status !== 'created' && item.status !== 'matched') {
             <div class="item-fields">
               <div class="field">
                 <label>Type</label>

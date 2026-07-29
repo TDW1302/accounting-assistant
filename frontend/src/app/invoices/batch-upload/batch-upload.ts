@@ -72,12 +72,13 @@ export class BatchUpload implements OnInit {
   });
 
   extractingCount = computed(() => this.files().filter(f => f.status === 'extracting').length);
-  allExtracted = computed(() => this.files().every(f => f.status === 'extracted' || f.status === 'error'));
+  allExtracted = computed(() => this.files().every(f => f.status === 'extracted' || f.status === 'matched' || f.status === 'error'));
   canCreate = computed(() => {
     const items = this.files();
     return items.length > 0 && items.every(f =>
-      (f.status === 'extracted' || f.status === 'error') &&
-      f.supplierId != null && f.type && f.receptionDate && f.year
+      f.status === 'matched' ||
+      ((f.status === 'extracted' || f.status === 'error') &&
+        f.supplierId != null && f.type && f.receptionDate && f.year)
     );
   });
 
@@ -97,6 +98,9 @@ export class BatchUpload implements OnInit {
       file,
       status: 'pending' as const,
       extraction: null,
+      matchedInvoiceId: null,
+      matchedNumber: null,
+      matchedSubNumber: null,
       year,
       type: 'PURCHASE' as InvoiceType,
       supplierId: null,
@@ -116,7 +120,45 @@ export class BatchUpload implements OnInit {
     this.files.set([...this.files(), ...newItems]);
     this.step.set('review');
     input.value = '';
-    this.extractAll(newItems);
+    this.matchOrExtract(newItems, year);
+  }
+
+  private parseNumberFromFilename(filename: string): { number: number; subNumber: number | null } | null {
+    const match = filename.match(/^(\d{3,})(?:\.(\d+))?-/);
+    if (!match) return null;
+    return { number: parseInt(match[1], 10), subNumber: match[2] ? parseInt(match[2], 10) : null };
+  }
+
+  private matchOrExtract(items: BatchInvoiceItem[], year: number): void {
+    this.invoiceService.list(year).pipe(
+      catchError(() => of([])),
+    ).subscribe(invoices => {
+      const toExtract: BatchInvoiceItem[] = [];
+
+      for (const item of items) {
+        const parsed = this.parseNumberFromFilename(item.file.name);
+        const match = parsed
+          ? invoices.find(inv => inv.number === parsed.number && inv.subNumber === parsed.subNumber && !inv.filePath)
+          : null;
+
+        if (match) {
+          item.status = 'matched';
+          item.matchedInvoiceId = match.id;
+          item.matchedNumber = match.number;
+          item.matchedSubNumber = match.subNumber;
+          item.supplierId = match.supplier.id;
+          item.type = match.type;
+          item.receptionDate = match.receptionDate;
+        } else {
+          toExtract.push(item);
+        }
+      }
+
+      this.files.update(f => [...f]);
+      if (toExtract.length > 0) {
+        this.extractAll(toExtract);
+      }
+    });
   }
 
   private extractAll(items: BatchInvoiceItem[]): void {
@@ -239,6 +281,21 @@ export class BatchUpload implements OnInit {
   private createSingleInvoice(item: BatchInvoiceItem, linkToNumber: number | null) {
     item.status = 'creating';
     this.files.update(f => [...f]);
+
+    if (item.matchedInvoiceId != null) {
+      return this.invoiceService.upload(item.matchedInvoiceId, item.file).pipe(
+        mergeMap(invoice => {
+          item.status = 'created';
+          this.files.update(f => [...f]);
+          return of({ success: true, number: invoice.number });
+        }),
+        catchError(() => {
+          item.status = 'error';
+          this.files.update(f => [...f]);
+          return of({ success: false, number: 0 });
+        }),
+      );
+    }
 
     const req: InvoiceRequest = {
       subNumber: null,
