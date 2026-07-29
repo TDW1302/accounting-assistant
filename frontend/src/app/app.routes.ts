@@ -66,5 +66,10 @@ export const routes: Routes = [
     loadComponent: () => import('./users/user-form/user-form').then(m => m.UserForm),
     canActivate: [authGuard, roleGuard(['ADMIN'])]
   },
+  {
+    path: 'admin/danger-zone',
+    loadComponent: () => import('./admin/danger-zone/danger-zone').then(m => m.DangerZone),
+    canActivate: [authGuard, roleGuard(['ADMIN'])]
+  },
   { path: '**', redirectTo: 'invoices' },
 ];

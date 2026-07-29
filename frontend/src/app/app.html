@@ -17,6 +17,7 @@
         <a routerLink="/suppliers" routerLinkActive="active" (click)="menuOpen = false">Fournisseurs</a>
         @if (authService.hasRole('ADMIN')) {
           <a routerLink="/users" routerLinkActive="active" (click)="menuOpen = false">Utilisateurs</a>
+          <a routerLink="/admin/danger-zone" routerLinkActive="active" (click)="menuOpen = false">Zone de danger</a>
         }
       </div>
       <div class="nav-user">

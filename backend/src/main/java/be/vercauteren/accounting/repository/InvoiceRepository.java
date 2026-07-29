@@ -8,10 +8,16 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpecificationExecutor<Invoice> {
 
     List<Invoice> findByYearOrderByNumberAscSubNumberAsc(Integer year);
+
+    @Query("SELECT DISTINCT i.year FROM Invoice i ORDER BY i.year DESC")
+    List<Integer> findDistinctYears();
+
+    long countByYear(Integer year);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Invoice> findFirstByYearOrderByNumberDesc(Integer year);

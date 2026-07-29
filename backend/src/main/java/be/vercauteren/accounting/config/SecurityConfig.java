@@ -61,6 +61,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/register", "/api/config").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/import/**").hasRole("ADMIN")
                 .requestMatchers("/api/inbox/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/peppol/**").authenticated()
