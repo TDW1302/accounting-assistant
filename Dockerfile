@@ -21,7 +21,8 @@ RUN cd backend && ./gradlew --no-daemon bootJar -x test
 # Stage 3: Final image
 FROM eclipse-temurin:25-jre-alpine
 
-RUN apk add --no-cache nginx
+# su-exec: drops the Java process to PUID:PGID at runtime (see entrypoint.sh)
+RUN apk add --no-cache nginx su-exec
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/http.d/default.conf
@@ -36,12 +37,12 @@ COPY --from=backend-build /app/backend/build/libs/*.jar /app/app.jar
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create data directories
-RUN mkdir -p /data/db /data/uploads
+# Create data directory (the database now lives in its own postgres container)
+RUN mkdir -p /data/uploads
 
-# Create non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
-    chown -R appuser:appgroup /data /app /usr/share/nginx/html
+# The entrypoint starts as root (nginx binds :80), creates a user matching the
+# PUID/PGID env vars, then runs the Java process as that user so the invoice
+# files it writes are owned by the host user rather than root.
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget -q --spider http://localhost:80/ || exit 1

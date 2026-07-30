@@ -1,13 +1,33 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-accounting}
+      - POSTGRES_USER=${POSTGRES_USER:-accounting}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-accounting} -d ${POSTGRES_DB:-accounting}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   app:
     build: .
     ports:
       - "8080:80"
     env_file:
       - .env
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-accounting}
+      - DB_USERNAME=${POSTGRES_USER:-accounting}
     volumes:
-      - accounting-data:/data/db
       - accounting-uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -16,5 +36,5 @@ services:
           cpus: '2'
 
 volumes:
-  accounting-data:
+  postgres-data:
   accounting-uploads:

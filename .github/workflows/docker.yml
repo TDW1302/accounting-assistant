@@ -5,7 +5,36 @@ on:
     branches: [main]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      # Testcontainers demarre un PostgreSQL jetable pour verifier que les
+      # migrations Flyway produisent un schema conforme aux entites JPA
+      # (ddl-auto=validate). Docker est preinstalle sur les runners ubuntu.
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: backend/build/reports/tests/test/
+          retention-days: 7
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
