@@ -35,5 +35,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
 
     boolean existsByYearAndNumberAndSubNumberIsNull(Integer year, Integer number);
 
+    boolean existsByYearAndNumberAndSubNumber(Integer year, Integer number, Integer subNumber);
+
+    Optional<Invoice> findByYearAndNumberAndSubNumberIsNull(Integer year, Integer number);
+
+    Optional<Invoice> findByYearAndNumberAndSubNumber(Integer year, Integer number, Integer subNumber);
+
     List<Invoice> findBySupplierIdAndReceptionDateAndFilePathIsNullAndPeppolFalse(Long supplierId, LocalDate receptionDate);
 }
