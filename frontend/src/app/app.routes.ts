@@ -17,6 +17,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'invoices/missing',
+    loadComponent: () => import('./invoices/missing-documents/missing-documents').then(m => m.MissingDocuments),
+    canActivate: [authGuard]
+  },
+  {
     path: 'invoices/batch',
     loadComponent: () => import('./invoices/batch-upload/batch-upload').then(m => m.BatchUpload),
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
@@ -64,6 +69,11 @@ export const routes: Routes = [
   {
     path: 'users/:id/edit',
     loadComponent: () => import('./users/user-form/user-form').then(m => m.UserForm),
+    canActivate: [authGuard, roleGuard(['ADMIN'])]
+  },
+  {
+    path: 'admin/suppliers/merge',
+    loadComponent: () => import('./admin/supplier-merge/supplier-merge').then(m => m.SupplierMerge),
     canActivate: [authGuard, roleGuard(['ADMIN'])]
   },
   {

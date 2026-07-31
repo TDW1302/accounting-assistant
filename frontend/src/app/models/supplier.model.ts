@@ -1,3 +1,5 @@
+import type { DateScope } from './invoice.model';
+
 export type ExpenseCategory =
   | 'RESTAURANT'
   | 'TRANSPORT'
@@ -37,6 +39,8 @@ export interface Supplier {
   alias: string | null;
   enterpriseNumber: string | null;
   category: ExpenseCategory | null;
+  /** Pre-fills the date scope of new invoices for this supplier. */
+  defaultDateScope: DateScope | null;
 }
 
 export interface SupplierRequest {
@@ -44,4 +48,5 @@ export interface SupplierRequest {
   alias: string | null;
   enterpriseNumber: string | null;
   category: ExpenseCategory | null;
+  defaultDateScope: DateScope | null;
 }

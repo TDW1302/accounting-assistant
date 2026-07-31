@@ -3,6 +3,18 @@ import { ExpenseCategory, Supplier } from './supplier.model';
 export type InvoiceType = 'PURCHASE' | 'SALE';
 export type DateScope = 'DAILY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'NONE';
 
+export const DATE_SCOPES: { value: DateScope; label: string }[] = [
+  { value: 'NONE', label: 'Aucune' },
+  { value: 'DAILY', label: 'Journalière' },
+  { value: 'MONTHLY', label: 'Mensuelle' },
+  { value: 'QUARTERLY', label: 'Trimestrielle' },
+  { value: 'YEARLY', label: 'Annuelle' },
+];
+
+export function dateScopeLabel(scope: DateScope | null): string {
+  return DATE_SCOPES.find(s => s.value === scope)?.label ?? '';
+}
+
 export interface Invoice {
   id: number;
   number: number;

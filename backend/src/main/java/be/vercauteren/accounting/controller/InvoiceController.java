@@ -53,6 +53,11 @@ public class InvoiceController {
         return invoiceService.search(year, supplierId, amountMin, amountMax, dateFrom, dateTo, keyword, category);
     }
 
+    @GetMapping("/missing-documents")
+    public List<InvoiceResponse> findMissingDocuments(@RequestParam(required = false) Integer year) {
+        return invoiceService.findMissingDocuments(year);
+    }
+
     @GetMapping("/{id}")
     public InvoiceResponse findById(@PathVariable Long id) {
         return invoiceService.findById(id);

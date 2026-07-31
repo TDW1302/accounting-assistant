@@ -5,7 +5,7 @@ import { switchMap } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier, SupplierRequest } from '../../models/supplier.model';
-import { InvoiceRequest, DateScope, InvoiceType } from '../../models/invoice.model';
+import { InvoiceRequest, DATE_SCOPES, InvoiceType } from '../../models/invoice.model';
 import { DocumentScanner } from '../document-scanner/document-scanner';
 
 @Component({
@@ -46,13 +46,20 @@ export class InvoiceForm implements OnInit {
     { value: 'SALE', label: 'Vente' },
   ];
 
-  readonly dateScopes: { value: DateScope; label: string }[] = [
-    { value: 'NONE', label: 'Aucune' },
-    { value: 'DAILY', label: 'Journalière' },
-    { value: 'MONTHLY', label: 'Mensuelle' },
-    { value: 'QUARTERLY', label: 'Trimestrielle' },
-    { value: 'YEARLY', label: 'Annuelle' },
-  ];
+  readonly dateScopes = DATE_SCOPES;
+
+  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the field. */
+  onSupplierChange(): void {
+    this.applySupplierDefaultScope(this.form.get('supplierId')?.value);
+  }
+
+  private applySupplierDefaultScope(supplierId: number | string | null): void {
+    if (!supplierId) return;
+    const supplier = this.suppliers().find(s => s.id === Number(supplierId));
+    if (supplier?.defaultDateScope) {
+      this.form.patchValue({ dateScope: supplier.defaultDateScope });
+    }
+  }
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -160,6 +167,8 @@ export class InvoiceForm implements OnInit {
           if (result.scopeDate) patch['scopeDate'] = result.scopeDate;
           if (result.comment) patch['comment'] = result.comment;
           this.form.patchValue(patch);
+          // The supplier's own rule beats whatever scope the AI guessed for this document.
+          this.applySupplierDefaultScope(result.supplierId);
 
           if (!result.supplierId && result.supplierName) {
             this.unmatchedSupplierName = result.supplierName;
@@ -184,6 +193,7 @@ export class InvoiceForm implements OnInit {
       alias: null,
       enterpriseNumber: null,
       category: this.newSupplierCategory,
+      defaultDateScope: null,
     };
 
     this.supplierService.create(req).subscribe({

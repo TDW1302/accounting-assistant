@@ -38,7 +38,7 @@
   <div class="form-row">
     <div class="form-group">
       <label for="supplierId">Fournisseur / Client <span class="required">*</span></label>
-      <select id="supplierId" formControlName="supplierId"
+      <select id="supplierId" formControlName="supplierId" (change)="onSupplierChange()"
               [class.invalid]="submitted && form.get('supplierId')?.invalid">
         <option [ngValue]="null" disabled>-- Sélectionner --</option>
         @for (s of suppliers(); track s.id) {

@@ -1,0 +1,80 @@
+<div class="page-header">
+  <h1>Documents manquants</h1>
+  <div class="header-actions">
+    <select [(ngModel)]="selectedYear" (ngModelChange)="load()">
+      <option [ngValue]="null">-- Toutes les années --</option>
+      @for (y of years; track y) {
+        <option [ngValue]="y">{{ y }}</option>
+      }
+    </select>
+    <a class="btn" routerLink="/invoices">Retour aux factures</a>
+  </div>
+</div>
+
+<p class="hint">
+  Factures sans fichier lié et non reçues via Peppol.
+  @if (!loading()) {
+    <strong>{{ invoices().length }}</strong> facture(s) concernée(s).
+  }
+</p>
+
+@if (lastUploaded(); as name) {
+  <div class="import-result">
+    <strong>Document ajouté :</strong> <span class="mono">{{ name }}</span>
+    <button class="btn btn-sm" (click)="lastUploaded.set(null)">Fermer</button>
+  </div>
+}
+
+<div class="table-wrapper">
+<table>
+  <thead>
+    <tr>
+      <th>Année</th>
+      <th>N°</th>
+      <th>Type</th>
+      <th>Fournisseur</th>
+      <th class="text-right">TTC</th>
+      <th>Date réception</th>
+      <th>Nom fichier attendu</th>
+      <th>Commentaire</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (inv of invoices(); track inv.id) {
+      <tr [class.sale-row]="inv.type === 'SALE'">
+        <td>{{ inv.year }}</td>
+        <td>{{ formatNumber(inv) }}</td>
+        <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
+        <td>{{ inv.supplier.name }}</td>
+        <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
+        <td class="mono">{{ inv.generatedFileName }}</td>
+        <td>{{ inv.comment }}</td>
+        <td class="actions">
+          @if (authService.hasRole('ADMIN') || authService.hasRole('USER')) {
+            <button class="btn btn-sm btn-primary" (click)="fileInput.click()"
+                    [disabled]="uploadingId() === inv.id">
+              {{ uploadingId() === inv.id ? 'Envoi...' : 'Ajouter le document' }}
+            </button>
+            <input #fileInput type="file" hidden
+                   accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp"
+                   (change)="onFileSelected($event, inv)">
+          }
+          <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="9" class="empty">
+          @if (loading()) {
+            Chargement...
+          } @else {
+            Aucune facture sans document.
+          }
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>
+</div>

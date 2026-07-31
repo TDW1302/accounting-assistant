@@ -28,6 +28,17 @@
     </select>
   </div>
 
+  <div class="form-group">
+    <label for="defaultDateScope">Portée de date par défaut</label>
+    <select id="defaultDateScope" formControlName="defaultDateScope">
+      <option [ngValue]="null">-- Non définie --</option>
+      @for (ds of dateScopes; track ds.value) {
+        <option [value]="ds.value">{{ ds.label }}</option>
+      }
+    </select>
+    <small class="field-hint">Pré-remplit la portée à la création d'une facture pour ce fournisseur (ex: DKV mensuelle, Vanbrada annuelle).</small>
+  </div>
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
       {{ isEdit ? 'Enregistrer' : 'Créer' }}

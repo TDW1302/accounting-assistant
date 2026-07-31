@@ -185,7 +185,8 @@ public class PeppolService {
             supplier.getName(),
             supplier.getAlias(),
             supplier.getEnterpriseNumber(),
-            supplier.getCategory()
+            supplier.getCategory(),
+            supplier.getDefaultDateScope()
         );
     }
 

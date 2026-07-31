@@ -78,7 +78,7 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label>Fournisseur</label>
-                    <select [(ngModel)]="importSupplierId" required>
+                    <select [(ngModel)]="importSupplierId" (ngModelChange)="onImportSupplierChange()" required>
                       <option [ngValue]="null">-- Sélectionner --</option>
                       @for (s of suppliers(); track s.id) {
                         <option [ngValue]="s.id">{{ s.name }}</option>

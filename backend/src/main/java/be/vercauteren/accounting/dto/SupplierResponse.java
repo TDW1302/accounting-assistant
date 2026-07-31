@@ -1,5 +1,6 @@
 package be.vercauteren.accounting.dto;
 
+import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.ExpenseCategory;
 
 public record SupplierResponse(
@@ -7,5 +8,6 @@ public record SupplierResponse(
     String name,
     String alias,
     String enterpriseNumber,
-    ExpenseCategory category
+    ExpenseCategory category,
+    DateScope defaultDateScope
 ) {}

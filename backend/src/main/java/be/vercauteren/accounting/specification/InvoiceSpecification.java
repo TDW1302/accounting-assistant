@@ -25,6 +25,14 @@ public class InvoiceSpecification {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("category"), category);
     }
 
+    /** No file on disk and not received via Peppol: the document is still missing. */
+    public static Specification<Invoice> missingDocument() {
+        return (root, query, cb) -> cb.and(
+            cb.isNull(root.get("filePath")),
+            cb.isFalse(root.get("peppol"))
+        );
+    }
+
     public static Specification<Invoice> amountBetween(BigDecimal min, BigDecimal max) {
         return (root, query, cb) -> {
             if (min != null && max != null) {

@@ -14,6 +14,7 @@ import be.vercauteren.accounting.util.InMemoryMultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -57,29 +58,47 @@ public class InvoiceService {
     public List<InvoiceResponse> search(Integer year, Long supplierId, BigDecimal amountMin,
                                          BigDecimal amountMax, LocalDate dateFrom, LocalDate dateTo,
                                          String keyword, ExpenseCategory category) {
-        Specification<Invoice> spec = Specification.where((Specification<Invoice>) null);
+        // Les criteres sont accumules puis combines: Specification.and n'accepte plus
+        // de null, un point de depart neutre ne peut donc pas etre une specification.
+        List<Specification<Invoice>> criteria = new ArrayList<>();
 
         if (year != null) {
-            spec = spec.and(InvoiceSpecification.hasYear(year));
+            criteria.add(InvoiceSpecification.hasYear(year));
         }
         if (supplierId != null) {
-            spec = spec.and(InvoiceSpecification.hasSupplier(supplierId));
+            criteria.add(InvoiceSpecification.hasSupplier(supplierId));
         }
         if (amountMin != null || amountMax != null) {
-            spec = spec.and(InvoiceSpecification.amountBetween(amountMin, amountMax));
+            criteria.add(InvoiceSpecification.amountBetween(amountMin, amountMax));
         }
         if (dateFrom != null || dateTo != null) {
-            spec = spec.and(InvoiceSpecification.receptionDateBetween(dateFrom, dateTo));
+            criteria.add(InvoiceSpecification.receptionDateBetween(dateFrom, dateTo));
         }
         if (keyword != null && !keyword.isBlank()) {
-            spec = spec.and(InvoiceSpecification.keywordSearch(keyword.trim()));
+            criteria.add(InvoiceSpecification.keywordSearch(keyword.trim()));
         }
         if (category != null) {
-            spec = spec.and(InvoiceSpecification.hasCategory(category));
+            criteria.add(InvoiceSpecification.hasCategory(category));
         }
 
         Sort sort = Sort.by(Sort.Direction.DESC, "year")
             .and(Sort.by(Sort.Direction.ASC, "number"));
+
+        return invoiceRepository.findAll(Specification.allOf(criteria), sort).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    /** Invoices whose document is still missing, optionally restricted to one year. */
+    public List<InvoiceResponse> findMissingDocuments(Integer year) {
+        Specification<Invoice> spec = InvoiceSpecification.missingDocument();
+        if (year != null) {
+            spec = spec.and(InvoiceSpecification.hasYear(year));
+        }
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "year")
+            .and(Sort.by(Sort.Direction.ASC, "number"))
+            .and(Sort.by(Sort.Direction.ASC, "subNumber"));
 
         return invoiceRepository.findAll(spec, sort).stream()
             .map(this::toResponse)

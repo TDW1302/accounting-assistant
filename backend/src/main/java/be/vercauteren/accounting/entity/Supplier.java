@@ -38,4 +38,8 @@ public class Supplier {
 
     @Enumerated(EnumType.STRING)
     private ExpenseCategory category;
+
+    /** Pre-fills the date scope of new invoices for this supplier. */
+    @Enumerated(EnumType.STRING)
+    private DateScope defaultDateScope;
 }

@@ -43,6 +43,7 @@ public class SupplierService {
             .alias(request.alias())
             .enterpriseNumber(request.enterpriseNumber())
             .category(request.category())
+            .defaultDateScope(request.defaultDateScope())
             .build();
         return toResponse(supplierRepository.save(supplier));
     }
@@ -54,6 +55,7 @@ public class SupplierService {
         supplier.setAlias(request.alias());
         supplier.setEnterpriseNumber(request.enterpriseNumber());
         supplier.setCategory(request.category());
+        supplier.setDefaultDateScope(request.defaultDateScope());
         return toResponse(supplierRepository.save(supplier));
     }
 
@@ -77,7 +79,8 @@ public class SupplierService {
             supplier.getName(),
             supplier.getAlias(),
             supplier.getEnterpriseNumber(),
-            supplier.getCategory()
+            supplier.getCategory(),
+            supplier.getDefaultDateScope()
         );
     }
 }

@@ -85,7 +85,8 @@
 
               <div class="field">
                 <label>Fournisseur</label>
-                <select [(ngModel)]="item.supplierId" [class.invalid]="!item.supplierId">
+                <select [(ngModel)]="item.supplierId" (ngModelChange)="applySupplierDefaultScope(item)"
+                        [class.invalid]="!item.supplierId">
                   <option [ngValue]="null">-- Sélectionner --</option>
                   @for (s of suppliers(); track s.id) {
                     <option [ngValue]="s.id">{{ s.name }}</option>

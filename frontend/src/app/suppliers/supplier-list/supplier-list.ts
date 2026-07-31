@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
+import { DateScope, dateScopeLabel } from '../../models/invoice.model';
 
 export type SupplierSortColumn = 'name' | 'alias' | 'category';
 
@@ -20,6 +21,10 @@ export class SupplierList implements OnInit {
     EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
   categoryLabel(category: ExpenseCategory | null): string {
     return category ? EXPENSE_CATEGORY_LABELS[category] : '';
+  }
+
+  scopeLabel(scope: DateScope | null): string {
+    return dateScopeLabel(scope);
   }
 
   categoryFilter: ExpenseCategory | null = null;

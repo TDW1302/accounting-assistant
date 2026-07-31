@@ -111,6 +111,10 @@ public class SupplierDeduplicationService {
             keep.setCategory(remove.getCategory());
             fieldsFilled.add("categorie = " + remove.getCategory());
         }
+        if (keep.getDefaultDateScope() == null && remove.getDefaultDateScope() != null) {
+            keep.setDefaultDateScope(remove.getDefaultDateScope());
+            fieldsFilled.add("portee par defaut = " + remove.getDefaultDateScope());
+        }
         supplierRepository.save(keep);
 
         // Les factures viennent d'etre reaffectees, mais le flush ne se fera qu'au

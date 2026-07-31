@@ -80,10 +80,22 @@ export class PeppolList implements OnInit {
     this.importSupplierId = doc.matchedSupplierId;
     this.importYear = new Date().getFullYear();
     this.importType = 'PURCHASE';
-    this.importDateScope = 'MONTHLY';
+    this.importDateScope = this.supplierDefaultScope(doc.matchedSupplierId) ?? 'MONTHLY';
     this.importScopeDate = '';
     this.importFileDetail = '';
     this.importComment = '';
+  }
+
+  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the field. */
+  onImportSupplierChange(): void {
+    const scope = this.supplierDefaultScope(this.importSupplierId);
+    if (scope) {
+      this.importDateScope = scope;
+    }
+  }
+
+  private supplierDefaultScope(supplierId: number | null): DateScope | null {
+    return this.suppliers().find(s => s.id === supplierId)?.defaultDateScope ?? null;
   }
 
   importSuppliers(): void {

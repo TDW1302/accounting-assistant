@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, SupplierRequest } from '../../models/supplier.model';
+import { DATE_SCOPES } from '../../models/invoice.model';
 
 @Component({
   selector: 'app-supplier-form',
@@ -23,12 +24,15 @@ export class SupplierForm implements OnInit {
   readonly categories: { value: ExpenseCategory; label: string }[] =
     EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
 
+  readonly dateScopes = DATE_SCOPES;
+
   ngOnInit(): void {
     this.form = this.fb.group({
       name: ['', Validators.required],
       alias: [null],
       enterpriseNumber: [null],
       category: [null],
+      defaultDateScope: [null],
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -49,6 +53,7 @@ export class SupplierForm implements OnInit {
       alias: this.form.value.alias || null,
       enterpriseNumber: this.form.value.enterpriseNumber || null,
       category: this.form.value.category || null,
+      defaultDateScope: this.form.value.defaultDateScope || null,
     };
 
     const op = this.isEdit

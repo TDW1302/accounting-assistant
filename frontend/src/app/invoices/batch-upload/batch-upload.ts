@@ -7,6 +7,7 @@ import { SupplierService } from '../../services/supplier.service';
 import { Supplier } from '../../models/supplier.model';
 import {
   BatchInvoiceItem,
+  DATE_SCOPES,
   DateScope,
   InvoiceRequest,
   InvoiceType,
@@ -40,13 +41,16 @@ export class BatchUpload implements OnInit {
     { value: 'SALE', label: 'Vente' },
   ];
 
-  readonly dateScopes: { value: DateScope; label: string }[] = [
-    { value: 'NONE', label: 'Aucune' },
-    { value: 'DAILY', label: 'Journalière' },
-    { value: 'MONTHLY', label: 'Mensuelle' },
-    { value: 'QUARTERLY', label: 'Trimestrielle' },
-    { value: 'YEARLY', label: 'Annuelle' },
-  ];
+  readonly dateScopes = DATE_SCOPES;
+
+  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the item. */
+  applySupplierDefaultScope(item: BatchInvoiceItem): void {
+    const supplier = this.suppliers().find(s => s.id === item.supplierId);
+    if (supplier?.defaultDateScope) {
+      item.dateScope = supplier.defaultDateScope;
+      this.files.update(f => [...f]);
+    }
+  }
 
   groupedFiles = computed<SupplierGroup[]>(() => {
     const items = this.files();
@@ -192,6 +196,8 @@ export class BatchUpload implements OnInit {
             if (result.dateScope) item.dateScope = result.dateScope;
             if (result.scopeDate) item.scopeDate = result.scopeDate;
             if (result.comment) item.comment = result.comment;
+            // The supplier's own rule beats whatever scope the AI guessed for this document.
+            this.applySupplierDefaultScope(item);
             this.files.update(f => [...f]);
             return of(null);
           }),

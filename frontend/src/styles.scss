@@ -162,11 +162,73 @@ table {
 .table-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+
+  // Barre de defilement toujours dessinee (pas en overlay) quand elle est utile
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+
+  &::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 999px;
+    border: 3px solid #f1f5f9;
+  }
 }
 
 // Responsive breakpoints
 $breakpoint-tablet: 768px;
 $breakpoint-phone: 480px;
+
+// Ecrans larges : la page occupe la hauteur de la fenetre et c'est la zone de
+// tableau qui defile. Sa barre horizontale reste donc visible en permanence,
+// sans devoir descendre en bas de page.
+@media (min-width: 769px) {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  // Hote du composant route : il doit relayer la hauteur jusqu'au tableau
+  .container > *:not(router-outlet) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .table-wrapper {
+    flex: 1 1 0;
+    min-height: 240px;
+    overflow: auto;
+  }
+
+  .table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+}
 
 @media (max-width: $breakpoint-tablet) {
   .page-header {
