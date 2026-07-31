@@ -20,14 +20,14 @@ public class SupplierService {
     private final InvoiceRepository invoiceRepository;
 
     public List<SupplierResponse> findAll() {
-        return supplierRepository.findAll().stream()
+        return supplierRepository.findAllOrderByName().stream()
             .map(this::toResponse)
             .toList();
     }
 
     public List<SupplierResponse> findAll(ExpenseCategory category) {
         if (category == null) return findAll();
-        return supplierRepository.findByCategory(category).stream()
+        return supplierRepository.findByCategoryOrderByName(category).stream()
             .map(this::toResponse)
             .toList();
     }

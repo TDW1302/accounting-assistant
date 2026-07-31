@@ -15,15 +15,15 @@
 <table>
   <thead>
     <tr>
-      <th>Nom</th>
-      <th>Alias</th>
+      <th class="sortable" (click)="sortBy('name')">Nom{{ sortIndicator('name') }}</th>
+      <th class="sortable" (click)="sortBy('alias')">Alias{{ sortIndicator('alias') }}</th>
       <th>N° entreprise</th>
-      <th>Catégorie</th>
+      <th class="sortable" (click)="sortBy('category')">Catégorie{{ sortIndicator('category') }}</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
-    @for (s of suppliers(); track s.id) {
+    @for (s of sortedSuppliers(); track s.id) {
       <tr>
         <td>{{ s.name }}</td>
         <td class="mono">{{ s.alias }}</td>
