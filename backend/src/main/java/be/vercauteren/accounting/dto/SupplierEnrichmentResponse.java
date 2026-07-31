@@ -16,6 +16,9 @@ import java.util.List;
  * @param categoriesFilled        categories renseignees
  * @param withoutDocument         fournisseurs sans document rattache, non analyses
  * @param failed                  documents dont la lecture a echoue
+ * @param lastId                  identifiant du dernier fournisseur du lot, a
+ *                                repasser en afterId pour enchainer; null quand il
+ *                                n'y avait plus rien a traiter
  * @param details                 une ligne par fournisseur examine
  */
 public record SupplierEnrichmentResponse(
@@ -27,5 +30,6 @@ public record SupplierEnrichmentResponse(
     int categoriesFilled,
     int withoutDocument,
     int failed,
+    Long lastId,
     List<String> details
 ) {}

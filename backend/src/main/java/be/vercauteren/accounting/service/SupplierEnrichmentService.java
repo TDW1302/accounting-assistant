@@ -105,8 +105,15 @@ public class SupplierEnrichmentService {
      * appel reseau par fournisseur tiendrait une connexion ouverte plusieurs minutes
      * sur un lot complet. Chaque fiche est donc enregistree pour elle-meme, et une
      * interruption en cours de route conserve le travail deja fait.
+     *
+     * <p>{@code afterId} permet d'enchainer des lots courts, sous le delai d'un
+     * proxy. La pagination porte sur l'identifiant, pas sur un rang: beaucoup de
+     * fiches restent incompletes apres leur passage — celles sans document, ou dont
+     * le numero lu a ete rejete — et paginer par rang les remettrait en tete a chaque
+     * appel, sans jamais progresser. Chaque lot renvoie {@code lastId}, a repasser
+     * tel quel au suivant.
      */
-    public SupplierEnrichmentResponse enrichFromDocuments(boolean dryRun, Integer limit) {
+    public SupplierEnrichmentResponse enrichFromDocuments(boolean dryRun, Integer limit, Long afterId) {
         List<String> details = new ArrayList<>();
         int analysed = 0;
         int enterpriseNumbersFilled = 0;
@@ -115,8 +122,10 @@ public class SupplierEnrichmentService {
         int withoutDocument = 0;
         int failed = 0;
 
-        List<Supplier> incomplete = sortedByName().stream()
+        List<Supplier> incomplete = supplierRepository.findAll().stream()
             .filter(s -> s.getEnterpriseNumber() == null || s.getCategory() == null)
+            .filter(s -> afterId == null || s.getId() > afterId)
+            .sorted(Comparator.comparing(Supplier::getId))
             .toList();
 
         List<Supplier> batch = limit == null || limit >= incomplete.size()
@@ -184,9 +193,11 @@ public class SupplierEnrichmentService {
             dryRun ? "dry run" : "applied", batch.size(), analysed, enterpriseNumbersFilled,
             numbersRejected, categoriesFilled, withoutDocument, failed);
 
+        Long lastId = batch.isEmpty() ? null : batch.getLast().getId();
+
         return new SupplierEnrichmentResponse(dryRun, batch.size(), analysed,
             enterpriseNumbersFilled, numbersRejected, categoriesFilled, withoutDocument,
-            failed, details);
+            failed, lastId, details);
     }
 
     /**

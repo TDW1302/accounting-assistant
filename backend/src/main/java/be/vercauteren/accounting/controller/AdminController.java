@@ -59,12 +59,16 @@ public class AdminController {
      *
      * <p>Attention: dryRun=true n'evite que l'enregistrement, les appels a l'IA ont
      * lieu et sont factures. Utiliser limit pour essayer sur un echantillon d'abord.
+     *
+     * <p>Le lot complet depasse le delai des proxys courants. Enchainer des lots
+     * courts en repassant le lastId de la reponse precedente en afterId.
      */
     @PostMapping("/suppliers/enrich")
     public SupplierEnrichmentResponse enrichSuppliers(
             @RequestParam(defaultValue = "false") boolean dryRun,
-            @RequestParam(required = false) Integer limit) {
-        return supplierEnrichmentService.enrichFromDocuments(dryRun, limit);
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Long afterId) {
+        return supplierEnrichmentService.enrichFromDocuments(dryRun, limit, afterId);
     }
 
     /** Couples de fiches susceptibles de designer la meme societe. Ne modifie rien. */
