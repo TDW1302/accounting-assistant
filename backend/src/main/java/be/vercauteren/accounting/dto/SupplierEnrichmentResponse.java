@@ -10,6 +10,9 @@ import java.util.List;
  * @param considered              fournisseurs auxquels il manquait une donnee
  * @param analysed                fournisseurs pour lesquels un document a ete lu
  * @param enterpriseNumbersFilled numeros d'entreprise renseignes
+ * @param numbersRejected         numeros lus mais ecartes, faute d'etre des numeros
+ *                                d'entreprise belges valides — souvent une reference
+ *                                de contrat prise pour un numero de societe
  * @param categoriesFilled        categories renseignees
  * @param withoutDocument         fournisseurs sans document rattache, non analyses
  * @param failed                  documents dont la lecture a echoue
@@ -20,6 +23,7 @@ public record SupplierEnrichmentResponse(
     int considered,
     int analysed,
     int enterpriseNumbersFilled,
+    int numbersRejected,
     int categoriesFilled,
     int withoutDocument,
     int failed,

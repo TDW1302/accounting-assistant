@@ -10,6 +10,7 @@ import be.vercauteren.accounting.repository.SupplierRepository;
 import be.vercauteren.accounting.util.AliasGenerator;
 import be.vercauteren.accounting.util.InMemoryMultipartFile;
 import be.vercauteren.accounting.util.MimeTypes;
+import be.vercauteren.accounting.util.VatUtils;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -109,6 +110,7 @@ public class SupplierEnrichmentService {
         List<String> details = new ArrayList<>();
         int analysed = 0;
         int enterpriseNumbersFilled = 0;
+        int numbersRejected = 0;
         int categoriesFilled = 0;
         int withoutDocument = 0;
         int failed = 0;
@@ -147,9 +149,17 @@ public class SupplierEnrichmentService {
 
             List<String> applied = new ArrayList<>();
             if (supplier.getEnterpriseNumber() == null && data.enterpriseNumber() != null) {
-                if (!dryRun) supplier.setEnterpriseNumber(data.enterpriseNumber());
-                enterpriseNumbersFilled++;
-                applied.add("n° " + data.enterpriseNumber());
+                String number = VatUtils.formatEnterpriseNumber(data.enterpriseNumber());
+                if (number == null) {
+                    numbersRejected++;
+                    details.add(supplier.getName() + " : numero '" + data.enterpriseNumber()
+                        + "' ignore, ce n'est pas un numero d'entreprise belge (lu dans '"
+                        + fileName + "')");
+                } else {
+                    if (!dryRun) supplier.setEnterpriseNumber(number);
+                    enterpriseNumbersFilled++;
+                    applied.add("n° " + number);
+                }
             }
             if (supplier.getCategory() == null && data.category() != null) {
                 if (!dryRun) supplier.setCategory(data.category());
@@ -170,12 +180,13 @@ public class SupplierEnrichmentService {
         }
 
         log.info("Supplier enrichment ({}): {} considered, {} analysed, {} numbers, "
-                + "{} categories, {} without document, {} failed",
+                + "{} numbers rejected, {} categories, {} without document, {} failed",
             dryRun ? "dry run" : "applied", batch.size(), analysed, enterpriseNumbersFilled,
-            categoriesFilled, withoutDocument, failed);
+            numbersRejected, categoriesFilled, withoutDocument, failed);
 
         return new SupplierEnrichmentResponse(dryRun, batch.size(), analysed,
-            enterpriseNumbersFilled, categoriesFilled, withoutDocument, failed, details);
+            enterpriseNumbersFilled, numbersRejected, categoriesFilled, withoutDocument,
+            failed, details);
     }
 
     /**
