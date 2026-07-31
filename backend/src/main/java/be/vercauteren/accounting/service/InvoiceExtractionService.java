@@ -12,7 +12,10 @@ import be.vercauteren.accounting.util.VatUtils;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.Base64ImageSource;
+import com.anthropic.models.messages.Base64PdfSource;
+import com.anthropic.models.messages.CacheControlEphemeral;
 import com.anthropic.models.messages.ContentBlockParam;
+import com.anthropic.models.messages.DocumentBlockParam;
 import com.anthropic.models.messages.ImageBlockParam;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
@@ -28,6 +31,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +47,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @Slf4j
 public class InvoiceExtractionService {
+
+    private static final String PDF_MIME_TYPE = "application/pdf";
 
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
@@ -79,7 +85,12 @@ public class InvoiceExtractionService {
     }
 
     public InvoiceExtractionResult extract(MultipartFile file) throws IOException {
-        List<Supplier> suppliers = supplierRepository.findAll();
+        // Ordre deterministe: la liste des fournisseurs forme le prefixe cache de
+        // chaque requete, et findAll() ne garantit aucun ordre. Une liste reordonnee
+        // est un prefixe different, donc un cache manque en silence.
+        List<Supplier> suppliers = supplierRepository.findAll().stream()
+            .sorted(Comparator.comparing(Supplier::getId))
+            .toList();
         AiProvider provider = resolveProvider();
 
         String contentType = file.getContentType();
@@ -94,24 +105,24 @@ public class InvoiceExtractionService {
             }
         }
 
+        String systemPrompt = buildSystemPrompt(suppliers);
         String responseText;
 
         if (pdfText != null) {
             // Text-based extraction (cheap)
-            String prompt = buildPrompt(pdfText, suppliers);
+            String userText = "Invoice text:\n---\n" + pdfText + "\n---";
             log.info("Using text-based extraction with {}", provider);
             responseText = (provider == AiProvider.GEMINI)
-                ? callGemini(prompt)
-                : callClaude(prompt);
+                ? callGemini(systemPrompt + "\n\n" + userText)
+                : callClaude(systemPrompt, userText);
         } else {
             // Vision fallback (image or scanned PDF)
             log.info("Using vision extraction with {}", provider);
             String mimeType = isImage ? contentType : "application/pdf";
             byte[] fileBytes = file.getBytes();
-            String instructions = buildVisionPrompt(suppliers);
             responseText = (provider == AiProvider.GEMINI)
-                ? callGeminiVision(instructions, fileBytes, mimeType)
-                : callClaudeVision(instructions, fileBytes, mimeType);
+                ? callGeminiVision(systemPrompt, fileBytes, mimeType)
+                : callClaudeVision(systemPrompt, fileBytes, mimeType);
         }
 
         return parseResponse(responseText, suppliers);
@@ -138,11 +149,12 @@ public class InvoiceExtractionService {
 
     // --- Text-based calls ---
 
-    private String callClaude(String prompt) {
+    private String callClaude(String systemPrompt, String userText) {
         MessageCreateParams params = MessageCreateParams.builder()
             .maxTokens(1024L)
-            .addUserMessage(prompt)
             .model(anthropicModel)
+            .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
+            .addUserMessage(userText)
             .build();
 
         Message message = anthropicClient.messages().create(params);
@@ -153,6 +165,22 @@ public class InvoiceExtractionService {
             .collect(Collectors.joining());
     }
 
+    /**
+     * Le prompt systeme (consignes + liste des fournisseurs) est identique d'une
+     * facture a l'autre. Le marquer cacheable le facture au dixieme du prix des le
+     * deuxieme appel, alors qu'il represente l'essentiel des tokens d'entree.
+     *
+     * <p>Sous le minimum cacheable du modele, l'API ignore simplement la marque:
+     * pas d'erreur, pas d'economie. Une modification de la liste des fournisseurs
+     * invalide le cache, qui se reconstruit a l'appel suivant.
+     */
+    private TextBlockParam cacheableSystemBlock(String text) {
+        return TextBlockParam.builder()
+            .text(text)
+            .cacheControl(CacheControlEphemeral.builder().build())
+            .build();
+    }
+
     private String callGemini(String prompt) {
         GenerateContentResponse response = geminiClient.models
             .generateContent(geminiModel, prompt, null);
@@ -161,27 +189,33 @@ public class InvoiceExtractionService {
 
     // --- Vision calls ---
 
-    private String callClaudeVision(String prompt, byte[] imageBytes, String mimeType) {
-        Base64ImageSource.MediaType mediaType = toClaudeMediaType(mimeType);
-        String base64 = Base64.getEncoder().encodeToString(imageBytes);
+    private String callClaudeVision(String systemPrompt, byte[] fileBytes, String mimeType) {
+        // Base64.getEncoder() n'insere pas de saut de ligne, ce que l'API exige.
+        String base64 = Base64.getEncoder().encodeToString(fileBytes);
 
-        ImageBlockParam imageBlock = ImageBlockParam.builder()
-            .source(Base64ImageSource.builder()
-                .data(base64)
-                .mediaType(mediaType)
+        // Un PDF doit partir dans un bloc "document". Le bloc "image" n'accepte que
+        // des types image: lui passer des octets PDF sous une etiquette JPEG fait
+        // echouer la requete, et l'extraction etant best-effort, l'echec est muet.
+        ContentBlockParam fileBlock = PDF_MIME_TYPE.equals(mimeType)
+            ? ContentBlockParam.ofDocument(DocumentBlockParam.builder()
+                .source(Base64PdfSource.builder().data(base64).build())
                 .build())
-            .build();
-
-        TextBlockParam textBlock = TextBlockParam.builder()
-            .text(prompt)
-            .build();
+            : ContentBlockParam.ofImage(ImageBlockParam.builder()
+                .source(Base64ImageSource.builder()
+                    .data(base64)
+                    .mediaType(toClaudeMediaType(mimeType))
+                    .build())
+                .build());
 
         MessageCreateParams params = MessageCreateParams.builder()
             .maxTokens(1024L)
             .model(anthropicModel)
+            .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
             .addUserMessageOfBlockParams(List.of(
-                ContentBlockParam.ofImage(imageBlock),
-                ContentBlockParam.ofText(textBlock)
+                fileBlock,
+                ContentBlockParam.ofText(TextBlockParam.builder()
+                    .text("Extract the data from this document.")
+                    .build())
             ))
             .build();
 
@@ -207,6 +241,7 @@ public class InvoiceExtractionService {
         return response.text();
     }
 
+    /** Types image uniquement: un PDF passe par un bloc document, pas par ici. */
     private Base64ImageSource.MediaType toClaudeMediaType(String mimeType) {
         return switch (mimeType) {
             case "image/png" -> Base64ImageSource.MediaType.IMAGE_PNG;
@@ -225,26 +260,20 @@ public class InvoiceExtractionService {
         }
     }
 
-    private String buildVisionPrompt(List<Supplier> suppliers) {
+    /**
+     * Consignes et liste des fournisseurs, identiques quel que soit le document.
+     * Un seul prompt pour les deux chemins (texte et vision) afin que le cache soit
+     * partage entre eux. Le contenu variable — texte de la facture ou fichier —
+     * vit dans le message utilisateur, apres ce prefixe.
+     */
+    private String buildSystemPrompt(List<Supplier> suppliers) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Look at this invoice/receipt image and extract structured data. ");
+        sb.append("You extract structured data from invoices and receipts. ");
         sb.append("Return ONLY a JSON object with these fields:\n");
         appendJsonFields(sb);
         appendSupplierList(sb, suppliers);
         sb.append("\nIf the supplier matches one of the known suppliers above, set supplierName to that supplier's exact name.\n\n");
         sb.append("Respond with ONLY the JSON object, no markdown, no explanation.");
-        return sb.toString();
-    }
-
-    private String buildPrompt(String pdfText, List<Supplier> suppliers) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Extract structured data from this invoice. Return ONLY a JSON object with these fields:\n");
-        appendJsonFields(sb);
-        appendSupplierList(sb, suppliers);
-        sb.append("\nIf the supplier matches one of the known suppliers above, set supplierName to that supplier's exact name.\n\n");
-        sb.append("Invoice text:\n---\n");
-        sb.append(pdfText);
-        sb.append("\n---\n\nRespond with ONLY the JSON object, no markdown, no explanation.");
         return sb.toString();
     }
 
