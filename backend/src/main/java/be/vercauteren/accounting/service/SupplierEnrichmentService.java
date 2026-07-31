@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,9 @@ public class SupplierEnrichmentService {
     private final SupplierRepository supplierRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceExtractionService extractionService;
+
+    @Value("${app.company.enterprise-number:}")
+    private String ownEnterpriseNumber;
 
     /**
      * Renseigne l'alias des fournisseurs qui n'en ont pas. La source privilegiee
@@ -164,6 +168,10 @@ public class SupplierEnrichmentService {
                     details.add(supplier.getName() + " : numero '" + data.enterpriseNumber()
                         + "' ignore, ce n'est pas un numero d'entreprise belge (lu dans '"
                         + fileName + "')");
+                } else if (isOurOwn(number)) {
+                    numbersRejected++;
+                    details.add(supplier.getName() + " : numero " + number
+                        + " ignore, c'est le notre (lu dans '" + fileName + "')");
                 } else {
                     if (!dryRun) supplier.setEnterpriseNumber(number);
                     enterpriseNumbersFilled++;
@@ -198,6 +206,20 @@ public class SupplierEnrichmentService {
         return new SupplierEnrichmentResponse(dryRun, batch.size(), analysed,
             enterpriseNumbersFilled, numbersRejected, categoriesFilled, withoutDocument,
             failed, lastId, details);
+    }
+
+    /**
+     * Notre propre numero d'entreprise n'appartient a aucun fournisseur.
+     *
+     * <p>Le prompt demande deja explicitement le numero de la partie nommee, mais une
+     * consigne n'est pas une garantie: le modele a rendu le notre sur deux documents
+     * malgre elle. Les deux fiches ne sont ressorties que parce qu'elles se sont
+     * telescopees dans la detection de doublons — une seule serait restee fausse en
+     * silence. D'ou ce controle en sortie, qui lui ne se laisse pas convaincre.
+     */
+    private boolean isOurOwn(String enterpriseNumber) {
+        String own = VatUtils.normalizeVat(ownEnterpriseNumber);
+        return own != null && own.equals(VatUtils.normalizeVat(enterpriseNumber));
     }
 
     /**
