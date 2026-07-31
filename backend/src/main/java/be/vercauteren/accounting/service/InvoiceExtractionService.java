@@ -1,6 +1,7 @@
 package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
+import be.vercauteren.accounting.dto.SupplierAiData;
 import be.vercauteren.accounting.entity.AiProvider;
 import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.ExpenseCategory;
@@ -50,6 +51,29 @@ public class InvoiceExtractionService {
 
     private static final String PDF_MIME_TYPE = "application/pdf";
 
+    /**
+     * Constant d'un fournisseur a l'autre — le nom de la partie voyage dans le
+     * message utilisateur — pour que le cache de prefixe serve a tout le lot.
+     *
+     * <p>Une facture porte le numero d'entreprise de l'emetteur ET du destinataire.
+     * Sans la consigne explicite, le modele rend indifferemment l'un ou l'autre, et
+     * sur une facture de vente ce serait celui de notre propre societe.
+     */
+    private static final String SUPPLIER_SYSTEM_PROMPT = """
+        You identify a business party on an invoice or receipt.
+        The party is named in the user message.
+
+        Return ONLY a JSON object with these fields:
+        - enterpriseNumber: that party's enterprise or VAT number, exactly as printed \
+        on the document, or null if it does not appear. Never return the number of \
+        any other party on the document.
+        - category: the expense category that best describes what this party invoices, \
+        one of %s. Use AUTRE if unsure.
+
+        Respond with ONLY the JSON object, no markdown, no explanation."""
+        .formatted(java.util.Arrays.stream(ExpenseCategory.values())
+            .map(Enum::name).collect(Collectors.joining(", ")));
+
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
@@ -91,6 +115,30 @@ public class InvoiceExtractionService {
         List<Supplier> suppliers = supplierRepository.findAll().stream()
             .sorted(Comparator.comparing(Supplier::getId))
             .toList();
+
+        String responseText = askAi(buildSystemPrompt(suppliers), "", file);
+        return parseResponse(responseText, suppliers);
+    }
+
+    /**
+     * Lit sur un document l'identite de la partie nommee. Sert a completer une fiche
+     * fournisseur existante, la ou {@link #extract} sert a creer une facture: le
+     * numero d'entreprise n'y figure pas, il n'y est qu'un critere de rapprochement.
+     *
+     * <p>Best-effort comme le reste de l'extraction: un echec rend un resultat vide
+     * plutot qu'une exception, pour qu'un document illisible n'interrompe pas le lot.
+     */
+    public SupplierAiData extractSupplierData(MultipartFile file, String partyName) throws IOException {
+        String responseText = askAi(SUPPLIER_SYSTEM_PROMPT, "Party: " + partyName + "\n\n", file);
+        return parseSupplierResponse(responseText);
+    }
+
+    /**
+     * Aiguillage commun texte/vision. Le prompt systeme porte le cache, le message
+     * utilisateur porte ce qui varie: {@code userPrefix} s'y ajoute en tete pour
+     * situer la demande sans casser le prefixe cache.
+     */
+    private String askAi(String systemPrompt, String userPrefix, MultipartFile file) throws IOException {
         AiProvider provider = resolveProvider();
 
         String contentType = file.getContentType();
@@ -105,27 +153,22 @@ public class InvoiceExtractionService {
             }
         }
 
-        String systemPrompt = buildSystemPrompt(suppliers);
-        String responseText;
-
         if (pdfText != null) {
             // Text-based extraction (cheap)
-            String userText = "Invoice text:\n---\n" + pdfText + "\n---";
+            String userText = userPrefix + "Invoice text:\n---\n" + pdfText + "\n---";
             log.info("Using text-based extraction with {}", provider);
-            responseText = (provider == AiProvider.GEMINI)
+            return (provider == AiProvider.GEMINI)
                 ? callGemini(systemPrompt + "\n\n" + userText)
                 : callClaude(systemPrompt, userText);
-        } else {
-            // Vision fallback (image or scanned PDF)
-            log.info("Using vision extraction with {}", provider);
-            String mimeType = isImage ? contentType : "application/pdf";
-            byte[] fileBytes = file.getBytes();
-            responseText = (provider == AiProvider.GEMINI)
-                ? callGeminiVision(systemPrompt, fileBytes, mimeType)
-                : callClaudeVision(systemPrompt, fileBytes, mimeType);
         }
 
-        return parseResponse(responseText, suppliers);
+        // Vision fallback (image or scanned PDF)
+        log.info("Using vision extraction with {}", provider);
+        String mimeType = isImage ? contentType : PDF_MIME_TYPE;
+        byte[] fileBytes = file.getBytes();
+        return (provider == AiProvider.GEMINI)
+            ? callGeminiVision(systemPrompt + "\n\n" + userPrefix, fileBytes, mimeType)
+            : callClaudeVision(systemPrompt, userPrefix, fileBytes, mimeType);
     }
 
     private AiProvider resolveProvider() {
@@ -189,7 +232,7 @@ public class InvoiceExtractionService {
 
     // --- Vision calls ---
 
-    private String callClaudeVision(String systemPrompt, byte[] fileBytes, String mimeType) {
+    private String callClaudeVision(String systemPrompt, String userPrefix, byte[] fileBytes, String mimeType) {
         // Base64.getEncoder() n'insere pas de saut de ligne, ce que l'API exige.
         String base64 = Base64.getEncoder().encodeToString(fileBytes);
 
@@ -214,7 +257,7 @@ public class InvoiceExtractionService {
             .addUserMessageOfBlockParams(List.of(
                 fileBlock,
                 ContentBlockParam.ofText(TextBlockParam.builder()
-                    .text("Extract the data from this document.")
+                    .text(userPrefix + "Extract the data from this document.")
                     .build())
             ))
             .build();
@@ -313,14 +356,7 @@ public class InvoiceExtractionService {
 
     private InvoiceExtractionResult parseResponse(String json, List<Supplier> suppliers) {
         try {
-            // Strip markdown code fences if present
-            String cleaned = json.strip();
-            if (cleaned.startsWith("```")) {
-                cleaned = cleaned.replaceFirst("```(?:json)?\\s*", "");
-                cleaned = cleaned.replaceFirst("\\s*```$", "");
-            }
-
-            JsonNode node = objectMapper.readTree(cleaned);
+            JsonNode node = objectMapper.readTree(stripCodeFences(json));
 
             String supplierName = blankToNull(node, "supplierName");
             String enterpriseNumber = blankToNull(node, "enterpriseNumber");
@@ -350,6 +386,28 @@ public class InvoiceExtractionService {
             log.error("Failed to parse AI response: {}", json, e);
             return emptyResult();
         }
+    }
+
+    private SupplierAiData parseSupplierResponse(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(stripCodeFences(json));
+            return new SupplierAiData(
+                blankToNull(node, "enterpriseNumber"),
+                parseEnum(node, "category", ExpenseCategory.class, null)
+            );
+        } catch (Exception e) {
+            log.error("Failed to parse AI supplier response: {}", json, e);
+            return new SupplierAiData(null, null);
+        }
+    }
+
+    private String stripCodeFences(String json) {
+        String cleaned = json.strip();
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.replaceFirst("```(?:json)?\\s*", "");
+            cleaned = cleaned.replaceFirst("\\s*```$", "");
+        }
+        return cleaned;
     }
 
     private Long matchSupplier(String name, String enterpriseNumber, List<Supplier> suppliers) {

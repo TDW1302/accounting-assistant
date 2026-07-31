@@ -6,6 +6,7 @@ import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.util.InMemoryMultipartFile;
+import be.vercauteren.accounting.util.MimeTypes;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -15,8 +16,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,22 +35,6 @@ public class InboxService {
     private String inboxDirectory;
 
     private final AtomicBoolean scanning = new AtomicBoolean(false);
-
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-        "pdf", "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "webp"
-    );
-
-    private static final Map<String, String> EXTENSION_TO_MIME = Map.ofEntries(
-        Map.entry("pdf", "application/pdf"),
-        Map.entry("jpg", "image/jpeg"),
-        Map.entry("jpeg", "image/jpeg"),
-        Map.entry("png", "image/png"),
-        Map.entry("gif", "image/gif"),
-        Map.entry("bmp", "image/bmp"),
-        Map.entry("tiff", "image/tiff"),
-        Map.entry("tif", "image/tiff"),
-        Map.entry("webp", "image/webp")
-    );
 
     private enum ProcessResult { MATCHED, CREATED, ERROR }
 
@@ -111,8 +94,7 @@ public class InboxService {
     private ProcessResult processFile(Path file, Path errorsDir) {
         try {
             String fileName = file.getFileName().toString();
-            String extension = getExtension(fileName);
-            String contentType = EXTENSION_TO_MIME.get(extension);
+            String contentType = MimeTypes.forFileName(fileName);
             byte[] content = Files.readAllBytes(file);
 
             InMemoryMultipartFile multipartFile = new InMemoryMultipartFile(
@@ -209,14 +191,7 @@ public class InboxService {
     }
 
     private boolean isAllowedExtension(Path file) {
-        String ext = getExtension(file.getFileName().toString());
-        return ext != null && ALLOWED_EXTENSIONS.contains(ext);
-    }
-
-    private String getExtension(String filename) {
-        int dotIndex = filename.lastIndexOf('.');
-        if (dotIndex <= 0) return null;
-        return filename.substring(dotIndex + 1).toLowerCase();
+        return MimeTypes.isSupported(file.getFileName().toString());
     }
 
     private void moveToErrors(Path file, Path errorsDir) throws IOException {

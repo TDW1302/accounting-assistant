@@ -42,4 +42,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     Optional<Invoice> findByYearAndNumberAndSubNumber(Integer year, Integer number, Integer subNumber);
 
     List<Invoice> findBySupplierIdAndReceptionDateAndFilePathIsNullAndPeppolFalse(Long supplierId, LocalDate receptionDate);
+
+    List<Invoice> findBySupplierIdAndFilePathIsNotNullOrderByYearDescNumberDesc(Long supplierId);
+
+    List<Invoice> findBySupplierId(Long supplierId);
+
+    int countBySupplierId(Long supplierId);
+
+    int countBySupplierIdAndFilePathIsNotNull(Long supplierId);
 }
