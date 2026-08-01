@@ -13,6 +13,8 @@ export type ExpenseCategory =
   | 'LOYER'
   | 'HONORAIRES'
   | 'MARKETING'
+  | 'TAXES'
+  | 'ADMINISTRATIF'
   | 'AUTRE';
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -28,6 +30,8 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   LOYER: 'Loyer',
   HONORAIRES: 'Honoraires',
   MARKETING: 'Marketing',
+  TAXES: 'Taxes et impôts',
+  ADMINISTRATIF: 'Frais administratifs',
   AUTRE: 'Autre',
 };
 

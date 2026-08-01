@@ -13,5 +13,9 @@ public enum ExpenseCategory {
     LOYER,
     HONORAIRES,
     MARKETING,
+    /** Prelevements: TVA, impots, precompte, taxe de circulation. */
+    TAXES,
+    /** Frais rendus par une administration: enregistrement d'un bail, depot BNB, greffe. */
+    ADMINISTRATIF,
     AUTRE
 }
