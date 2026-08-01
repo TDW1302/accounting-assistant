@@ -1,13 +1,3 @@
-.sortable {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-
-  &:hover {
-    color: #334155;
-  }
-}
-
 .actions {
   white-space: nowrap;
   display: flex;

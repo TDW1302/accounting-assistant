@@ -8,6 +8,11 @@
         }
       </select>
     }
+    <select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)">
+      <option [ngValue]="null">-- Achats et ventes --</option>
+      <option [ngValue]="'PURCHASE'">Achats</option>
+      <option [ngValue]="'SALE'">Ventes</option>
+    </select>
     @if (searchActive) {
       <span class="badge-search">Recherche active</span>
       <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
@@ -116,7 +121,7 @@
       @if (searchActive) {
         <th>Année</th>
       }
-      <th>N°</th>
+      <th class="sortable" (click)="toggleSort()">N°{{ sortIndicator() }}</th>
       <th>Type</th>
       <th>Fournisseur</th>
       <th class="text-right">TTC</th>
@@ -131,7 +136,7 @@
     </tr>
   </thead>
   <tbody>
-    @for (inv of invoices(); track inv.id) {
+    @for (inv of displayedInvoices(); track inv.id) {
       <tr [class.sale-row]="inv.type === 'SALE'">
         @if (searchActive) {
           <td>{{ inv.year }}</td>
@@ -157,7 +162,9 @@
     } @empty {
       <tr>
         <td [attr.colspan]="searchActive ? 13 : 12" class="empty">
-          @if (searchActive) {
+          @if (typeFilter() !== null && invoices().length > 0) {
+            Aucune facture de ce type.
+          } @else if (searchActive) {
             Aucune facture trouvée pour cette recherche.
           } @else {
             Aucune facture pour {{ selectedYear() }}.

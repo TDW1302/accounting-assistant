@@ -44,6 +44,16 @@ table {
   tbody tr:hover {
     background: #f8fafc;
   }
+
+  th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+
+    &:hover {
+      color: #334155;
+    }
+  }
 }
 
 .btn {

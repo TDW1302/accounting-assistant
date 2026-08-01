@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { ImportService, ExcelImportResponse } from '../../services/import.service';
 import { InboxService, InboxScanResult } from '../../services/inbox.service';
 import { ConfigService } from '../../services/config.service';
-import { Invoice } from '../../models/invoice.model';
+import { Invoice, InvoiceType } from '../../models/invoice.model';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
 
 @Component({
@@ -33,6 +33,33 @@ export class InvoiceList implements OnInit {
   importing = signal(false);
   scanResult = signal<InboxScanResult | null>(null);
   scanning = signal(false);
+
+  /** Les dernieres factures d'abord: c'est sur elles qu'on travaille. */
+  sortAsc = signal(false);
+  typeFilter = signal<InvoiceType | null>(null);
+
+  displayedInvoices = computed(() => {
+    const type = this.typeFilter();
+    const direction = this.sortAsc() ? 1 : -1;
+    return this.invoices()
+      .filter(inv => type === null || inv.type === type)
+      .sort((a, b) => direction * this.compareByNumber(a, b));
+  });
+
+  toggleSort(): void {
+    this.sortAsc.update(asc => !asc);
+  }
+
+  sortIndicator(): string {
+    return this.sortAsc() ? ' ▲' : ' ▼';
+  }
+
+  /** L'annee prime: une recherche multi-annees resterait sinon melangee. */
+  private compareByNumber(a: Invoice, b: Invoice): number {
+    if (a.year !== b.year) return a.year - b.year;
+    if (a.number !== b.number) return a.number - b.number;
+    return (a.subNumber ?? 0) - (b.subNumber ?? 0);
+  }
 
   searchActive = false;
   keyword = '';
