@@ -11,11 +11,14 @@
             <span class="badge-error">{{ configService.inboxErrorCount() }}</span>
           }
         </a>
-        <a routerLink="/invoices/missing" routerLinkActive="active" (click)="menuOpen = false">Documents manquants</a>
         @if (configService.peppolEnabled()) {
           <a routerLink="/peppol" routerLinkActive="active" (click)="menuOpen = false">Peppol</a>
         }
         <a routerLink="/suppliers" routerLinkActive="active" (click)="menuOpen = false">Fournisseurs</a>
+
+        <span class="nav-separator" aria-hidden="true"></span>
+
+        <a routerLink="/invoices/missing" routerLinkActive="active" (click)="menuOpen = false">Documents manquants</a>
         @if (authService.hasRole('ADMIN')) {
           <a routerLink="/users" routerLinkActive="active" (click)="menuOpen = false">Utilisateurs</a>
           <a routerLink="/admin/suppliers/merge" routerLinkActive="active" (click)="menuOpen = false">Fusion fournisseurs</a>
