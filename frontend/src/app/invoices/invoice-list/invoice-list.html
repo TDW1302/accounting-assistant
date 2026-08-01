@@ -173,5 +173,18 @@
       </tr>
     }
   </tbody>
+  @if (displayedInvoices().length > 0) {
+    <tfoot>
+      <tr>
+        <td [attr.colspan]="searchActive ? 4 : 3">
+          Total — {{ displayedInvoices().length }} facture(s)
+        </td>
+        <td class="text-right">{{ totals().incVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ totals().exVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ totals().vat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td colspan="6"></td>
+      </tr>
+    </tfoot>
+  }
 </table>
 </div>

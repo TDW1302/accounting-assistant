@@ -89,6 +89,23 @@
   gap: 0.375rem;
 }
 
+tfoot td {
+  font-weight: 600;
+  background: #f1f5f9;
+  border-top: 2px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+// Le tableau defile dans sa propre zone a partir de cette largeur: les totaux
+// restent alors visibles au lieu de partir avec la derniere ligne.
+@media (min-width: 769px) {
+  tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
+}
+
 .empty {
   text-align: center;
   color: #64748b;

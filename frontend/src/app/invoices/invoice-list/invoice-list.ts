@@ -46,6 +46,17 @@ export class InvoiceList implements OnInit {
       .sort((a, b) => direction * this.compareByNumber(a, b));
   });
 
+  /** Totaux des lignes affichees: ils suivent donc le filtre de type. */
+  totals = computed(() => {
+    const sum = (pick: (inv: Invoice) => number | null) =>
+      this.displayedInvoices().reduce((acc, inv) => acc + (pick(inv) ?? 0), 0);
+    return {
+      incVat: sum(inv => inv.amountIncVat),
+      exVat: sum(inv => inv.amountExVat),
+      vat: sum(inv => inv.vatAmount),
+    };
+  });
+
   toggleSort(): void {
     this.sortAsc.update(asc => !asc);
   }
