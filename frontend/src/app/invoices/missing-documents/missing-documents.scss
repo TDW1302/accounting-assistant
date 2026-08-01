@@ -12,6 +12,16 @@
   }
 }
 
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: #475569;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .hint {
   color: #64748b;
   font-size: 0.875rem;

@@ -7,12 +7,20 @@
         <option [ngValue]="y">{{ y }}</option>
       }
     </select>
+    <label class="toggle">
+      <input type="checkbox" [(ngModel)]="includePeppol" (ngModelChange)="load()">
+      Inclure les factures Peppol
+    </label>
     <a class="btn" routerLink="/invoices">Retour aux factures</a>
   </div>
 </div>
 
 <p class="hint">
-  Factures sans fichier lié et non reçues via Peppol.
+  @if (includePeppol) {
+    Factures sans fichier lié, Peppol comprises — leur document reste chez Falco tant qu'il n'est pas chargé ici.
+  } @else {
+    Factures sans fichier lié et non reçues via Peppol.
+  }
   @if (!loading()) {
     <strong>{{ invoices().length }}</strong> facture(s) concernée(s).
   }
@@ -35,6 +43,7 @@
       <th>Fournisseur</th>
       <th class="text-right">TTC</th>
       <th>Date réception</th>
+      <th>Peppol</th>
       <th>Nom fichier attendu</th>
       <th>Commentaire</th>
       <th>Actions</th>
@@ -49,6 +58,7 @@
         <td>{{ inv.supplier.name }}</td>
         <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
         <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
+        <td>{{ inv.peppol ? 'V' : '' }}</td>
         <td class="mono">{{ inv.generatedFileName }}</td>
         <td>{{ inv.comment }}</td>
         <td class="actions">
@@ -66,7 +76,7 @@
       </tr>
     } @empty {
       <tr>
-        <td colspan="9" class="empty">
+        <td colspan="10" class="empty">
           @if (loading()) {
             Chargement...
           } @else {

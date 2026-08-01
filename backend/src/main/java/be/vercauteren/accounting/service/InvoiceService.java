@@ -90,8 +90,8 @@ public class InvoiceService {
     }
 
     /** Invoices whose document is still missing, optionally restricted to one year. */
-    public List<InvoiceResponse> findMissingDocuments(Integer year) {
-        Specification<Invoice> spec = InvoiceSpecification.missingDocument();
+    public List<InvoiceResponse> findMissingDocuments(Integer year, boolean includePeppol) {
+        Specification<Invoice> spec = InvoiceSpecification.missingDocument(includePeppol);
         if (year != null) {
             spec = spec.and(InvoiceSpecification.hasYear(year));
         }

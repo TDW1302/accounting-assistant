@@ -22,6 +22,8 @@ export class MissingDocuments implements OnInit {
   lastUploaded = signal<string | null>(null);
 
   selectedYear: number | null = null;
+  /** Les factures Peppol ont leur document chez Falco: exclues sauf demande explicite. */
+  includePeppol = false;
   years: number[] = [];
 
   ngOnInit(): void {
@@ -34,7 +36,7 @@ export class MissingDocuments implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.invoiceService.missingDocuments(this.selectedYear).subscribe({
+    this.invoiceService.missingDocuments(this.selectedYear, this.includePeppol).subscribe({
       next: data => {
         this.invoices.set(data);
         this.loading.set(false);

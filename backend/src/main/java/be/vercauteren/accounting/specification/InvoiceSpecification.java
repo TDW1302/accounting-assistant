@@ -25,12 +25,15 @@ public class InvoiceSpecification {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("category"), category);
     }
 
-    /** No file on disk and not received via Peppol: the document is still missing. */
-    public static Specification<Invoice> missingDocument() {
-        return (root, query, cb) -> cb.and(
-            cb.isNull(root.get("filePath")),
-            cb.isFalse(root.get("peppol"))
-        );
+    /**
+     * No file on disk. Les factures Peppol en sont exclues par defaut: leur document
+     * reste chez Falco, leur absence de fichier n'est donc pas un oubli. Les inclure
+     * sert a repasser derriere pour charger celles qu'on veut aussi en local.
+     */
+    public static Specification<Invoice> missingDocument(boolean includePeppol) {
+        return (root, query, cb) -> includePeppol
+            ? cb.isNull(root.get("filePath"))
+            : cb.and(cb.isNull(root.get("filePath")), cb.isFalse(root.get("peppol")));
     }
 
     public static Specification<Invoice> amountBetween(BigDecimal min, BigDecimal max) {

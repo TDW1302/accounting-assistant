@@ -54,8 +54,10 @@ public class InvoiceController {
     }
 
     @GetMapping("/missing-documents")
-    public List<InvoiceResponse> findMissingDocuments(@RequestParam(required = false) Integer year) {
-        return invoiceService.findMissingDocuments(year);
+    public List<InvoiceResponse> findMissingDocuments(
+        @RequestParam(required = false) Integer year,
+        @RequestParam(defaultValue = "false") boolean includePeppol) {
+        return invoiceService.findMissingDocuments(year, includePeppol);
     }
 
     @GetMapping("/{id}")

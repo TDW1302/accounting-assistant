@@ -34,8 +34,9 @@ export class InvoiceService {
     return this.http.get<Invoice[]>(`${this.url}/search`, { params: httpParams });
   }
 
-  missingDocuments(year?: number | null): Observable<Invoice[]> {
-    const params: Record<string, number> = year ? { year } : {};
+  missingDocuments(year?: number | null, includePeppol = false): Observable<Invoice[]> {
+    const params: Record<string, number | boolean> = { includePeppol };
+    if (year) params['year'] = year;
     return this.http.get<Invoice[]>(`${this.url}/missing-documents`, { params });
   }
 
