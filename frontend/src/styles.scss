@@ -196,9 +196,17 @@ $breakpoint-phone: 480px;
     height: 100%;
   }
 
-  body {
+  // app-root porte la navbar, le contenu et le pied de page: il fait partie de
+  // la chaine, sans quoi la hauteur ne descend pas jusqu'au tableau.
+  body,
+  app-root {
     display: flex;
     flex-direction: column;
+  }
+
+  app-root {
+    flex: 1;
+    min-height: 0;
   }
 
   .container {
