@@ -43,6 +43,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
 
     List<Invoice> findBySupplierIdAndReceptionDateAndFilePathIsNullAndPeppolFalse(Long supplierId, LocalDate receptionDate);
 
+    /** Candidates for reconciling an inbox file: same supplier, no document yet. */
+    List<Invoice> findBySupplierIdAndFilePathIsNull(Long supplierId);
+
     List<Invoice> findBySupplierIdAndFilePathIsNotNullOrderByYearDescNumberDesc(Long supplierId);
 
     List<Invoice> findBySupplierId(Long supplierId);
