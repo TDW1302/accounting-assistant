@@ -41,6 +41,8 @@ export interface Supplier {
   category: ExpenseCategory | null;
   /** Pre-fills the date scope of new invoices for this supplier. */
   defaultDateScope: DateScope | null;
+  /** Pre-fills the Peppol flag of new invoices for this supplier. */
+  defaultPeppol: boolean;
 }
 
 export interface SupplierRequest {
@@ -49,4 +51,5 @@ export interface SupplierRequest {
   enterpriseNumber: string | null;
   category: ExpenseCategory | null;
   defaultDateScope: DateScope | null;
+  defaultPeppol: boolean;
 }

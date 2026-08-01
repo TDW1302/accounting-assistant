@@ -33,6 +33,7 @@ export class SupplierForm implements OnInit {
       enterpriseNumber: [null],
       category: [null],
       defaultDateScope: [null],
+      defaultPeppol: [false],
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -54,6 +55,7 @@ export class SupplierForm implements OnInit {
       enterpriseNumber: this.form.value.enterpriseNumber || null,
       category: this.form.value.category || null,
       defaultDateScope: this.form.value.defaultDateScope || null,
+      defaultPeppol: !!this.form.value.defaultPeppol,
     };
 
     const op = this.isEdit

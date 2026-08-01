@@ -85,7 +85,7 @@
 
               <div class="field">
                 <label>Fournisseur</label>
-                <select [(ngModel)]="item.supplierId" (ngModelChange)="applySupplierDefaultScope(item)"
+                <select [(ngModel)]="item.supplierId" (ngModelChange)="applySupplierDefaults(item)"
                         [class.invalid]="!item.supplierId">
                   <option [ngValue]="null">-- Sélectionner --</option>
                   @for (s of suppliers(); track s.id) {
@@ -131,6 +131,11 @@
               <div class="field">
                 <label>Date période</label>
                 <input type="date" [(ngModel)]="item.scopeDate">
+              </div>
+
+              <div class="field">
+                <label>Reçu via Peppol</label>
+                <input type="checkbox" [(ngModel)]="item.peppol">
               </div>
 
               <div class="field">

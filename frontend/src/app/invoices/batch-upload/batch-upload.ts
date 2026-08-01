@@ -43,13 +43,16 @@ export class BatchUpload implements OnInit {
 
   readonly dateScopes = DATE_SCOPES;
 
-  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the item. */
-  applySupplierDefaultScope(item: BatchInvoiceItem): void {
+  /** Les defauts du fournisseur (DKV mensuel, Vanbrada annuel, recu par Peppol...). */
+  applySupplierDefaults(item: BatchInvoiceItem): void {
     const supplier = this.suppliers().find(s => s.id === item.supplierId);
-    if (supplier?.defaultDateScope) {
+    if (!supplier) return;
+
+    if (supplier.defaultDateScope) {
       item.dateScope = supplier.defaultDateScope;
-      this.files.update(f => [...f]);
     }
+    item.peppol = supplier.defaultPeppol;
+    this.files.update(f => [...f]);
   }
 
   groupedFiles = computed<SupplierGroup[]>(() => {
@@ -197,7 +200,7 @@ export class BatchUpload implements OnInit {
             if (result.scopeDate) item.scopeDate = result.scopeDate;
             if (result.comment) item.comment = result.comment;
             // The supplier's own rule beats whatever scope the AI guessed for this document.
-            this.applySupplierDefaultScope(item);
+            this.applySupplierDefaults(item);
             this.files.update(f => [...f]);
             return of(null);
           }),

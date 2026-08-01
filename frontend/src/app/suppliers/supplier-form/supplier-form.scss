@@ -2,6 +2,14 @@ form {
   max-width: 500px;
 }
 
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 .field-hint {
   color: #64748b;
   font-size: 0.75rem;

@@ -42,4 +42,9 @@ public class Supplier {
     /** Pre-fills the date scope of new invoices for this supplier. */
     @Enumerated(EnumType.STRING)
     private DateScope defaultDateScope;
+
+    /** Pre-fills the Peppol flag of new invoices for this supplier. */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean defaultPeppol = false;
 }

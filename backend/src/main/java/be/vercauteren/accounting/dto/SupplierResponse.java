@@ -9,5 +9,6 @@ public record SupplierResponse(
     String alias,
     String enterpriseNumber,
     ExpenseCategory category,
-    DateScope defaultDateScope
+    DateScope defaultDateScope,
+    boolean defaultPeppol
 ) {}

@@ -48,17 +48,20 @@ export class InvoiceForm implements OnInit {
 
   readonly dateScopes = DATE_SCOPES;
 
-  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the field. */
+  /** Les defauts du fournisseur (DKV mensuel, Vanbrada annuel, recu par Peppol...). */
   onSupplierChange(): void {
-    this.applySupplierDefaultScope(this.form.get('supplierId')?.value);
+    this.applySupplierDefaults(this.form.get('supplierId')?.value);
   }
 
-  private applySupplierDefaultScope(supplierId: number | string | null): void {
+  private applySupplierDefaults(supplierId: number | string | null): void {
     if (!supplierId) return;
     const supplier = this.suppliers().find(s => s.id === Number(supplierId));
-    if (supplier?.defaultDateScope) {
+    if (!supplier) return;
+
+    if (supplier.defaultDateScope) {
       this.form.patchValue({ dateScope: supplier.defaultDateScope });
     }
+    this.form.patchValue({ peppol: supplier.defaultPeppol });
   }
 
   ngOnInit(): void {
@@ -168,7 +171,7 @@ export class InvoiceForm implements OnInit {
           if (result.comment) patch['comment'] = result.comment;
           this.form.patchValue(patch);
           // The supplier's own rule beats whatever scope the AI guessed for this document.
-          this.applySupplierDefaultScope(result.supplierId);
+          this.applySupplierDefaults(result.supplierId);
 
           if (!result.supplierId && result.supplierName) {
             this.unmatchedSupplierName = result.supplierName;
@@ -194,6 +197,7 @@ export class InvoiceForm implements OnInit {
       enterpriseNumber: null,
       category: this.newSupplierCategory,
       defaultDateScope: null,
+      defaultPeppol: false,
     };
 
     this.supplierService.create(req).subscribe({

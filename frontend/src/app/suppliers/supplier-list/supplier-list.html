@@ -20,6 +20,7 @@
       <th>N° entreprise</th>
       <th class="sortable" (click)="sortBy('category')">Catégorie{{ sortIndicator('category') }}</th>
       <th>Portée par défaut</th>
+      <th>Peppol</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -31,6 +32,7 @@
         <td>{{ s.enterpriseNumber }}</td>
         <td>{{ categoryLabel(s.category) }}</td>
         <td>{{ scopeLabel(s.defaultDateScope) }}</td>
+        <td>{{ s.defaultPeppol ? 'V' : '' }}</td>
         <td class="actions">
           <a class="btn btn-sm" [routerLink]="['/suppliers', s.id, 'edit']">Modifier</a>
           <button class="btn btn-sm btn-danger" (click)="deleteSupplier(s)">Supprimer</button>
@@ -38,7 +40,7 @@
       </tr>
     } @empty {
       <tr>
-        <td colspan="6" class="empty">Aucun fournisseur.</td>
+        <td colspan="7" class="empty">Aucun fournisseur.</td>
       </tr>
     }
   </tbody>
