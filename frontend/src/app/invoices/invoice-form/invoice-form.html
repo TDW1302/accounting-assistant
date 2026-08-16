@@ -9,6 +9,28 @@
 }
 
 <form [formGroup]="form" (ngSubmit)="save()">
+  <div class="form-group">
+    <label>Fichier (PDF ou photo)</label>
+    <div class="file-upload">
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" capture="environment" (change)="onFileSelected($event)">
+      @if (!isEdit) {
+        <label class="auto-extract-toggle">
+          <input type="checkbox" [(ngModel)]="autoExtract" [ngModelOptions]="{standalone: true}">
+          Extraction automatique (IA)
+        </label>
+      }
+      @if (extracting) {
+        <span class="extracting">Extraction des données en cours...</span>
+      }
+      @if (selectedFile) {
+        <span class="file-name">{{ selectedFile.name }}</span>
+      }
+      @if (existingFilePath) {
+        <span class="existing-file">Fichier actuel : {{ existingFilePath }}</span>
+      }
+    </div>
+  </div>
+
   <div class="form-row">
     <div class="form-group">
       <label for="year">Année <span class="required">*</span></label>
@@ -130,28 +152,6 @@
     <div class="form-group">
       <label for="fileDetail">Détail fichier</label>
       <input id="fileDetail" type="text" formControlName="fileDetail" placeholder="Ex: PneuHiver">
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label>Fichier (PDF ou photo)</label>
-    <div class="file-upload">
-      <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" capture="environment" (change)="onFileSelected($event)">
-      @if (!isEdit) {
-        <label class="auto-extract-toggle">
-          <input type="checkbox" [(ngModel)]="autoExtract" [ngModelOptions]="{standalone: true}">
-          Extraction automatique (IA)
-        </label>
-      }
-      @if (extracting) {
-        <span class="extracting">Extraction des données en cours...</span>
-      }
-      @if (selectedFile) {
-        <span class="file-name">{{ selectedFile.name }}</span>
-      }
-      @if (existingFilePath) {
-        <span class="existing-file">Fichier actuel : {{ existingFilePath }}</span>
-      }
     </div>
   </div>
 
