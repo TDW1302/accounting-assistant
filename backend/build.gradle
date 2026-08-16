@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.3'
+	id 'org.springframework.boot' version '4.0.7'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -33,14 +33,14 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.apache.pdfbox:pdfbox:3.0.6'
-	implementation 'com.anthropic:anthropic-java:2.16.0'
-	implementation 'com.google.genai:google-genai:1.44.0'
-	implementation 'org.apache.poi:poi-ooxml:5.4.1'
+	implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+	implementation 'com.anthropic:anthropic-java:2.54.0'
+	implementation 'com.google.genai:google-genai:1.66.0'
+	implementation 'org.apache.poi:poi-ooxml:5.5.1'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation platform('org.testcontainers:testcontainers-bom:1.21.3')
+	testImplementation platform('org.testcontainers:testcontainers-bom:1.21.4')
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:junit-jupiter'
