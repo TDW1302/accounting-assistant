@@ -1,7 +1,6 @@
 package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.ChangePasswordRequest;
-import be.vercauteren.accounting.dto.RegisterRequest;
 import be.vercauteren.accounting.dto.UserRequest;
 import be.vercauteren.accounting.dto.UserResponse;
 import be.vercauteren.accounting.dto.UserUpdateRequest;
@@ -32,30 +31,6 @@ public class UserService {
 
     public UserResponse findById(Long id) {
         return toResponse(getOrThrow(id));
-    }
-
-    @Transactional
-    public UserResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
-            throw new IllegalArgumentException("Username already exists");
-        }
-        if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email already exists");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        User user = User.builder()
-            .username(request.username())
-            .email(request.email())
-            .password(passwordEncoder.encode(request.password()))
-            .role(UserRole.VIEWER)
-            .enabled(true)
-            .passwordChangedAt(now)
-            .passwordExpiresAt(now.plusMonths(3))
-            .createdAt(now)
-            .build();
-
-        return toResponse(userRepository.save(user));
     }
 
     @Transactional

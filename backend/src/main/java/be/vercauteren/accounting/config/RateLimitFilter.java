@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Rate limiting filter for authentication endpoints to prevent brute-force attacks.
- * Limits to 5 attempts per IP per 15-minute window on login and register endpoints.
+ * Limits to 5 attempts per IP per 15-minute window on the login endpoint.
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -55,7 +55,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
-        return !("POST".equals(method) && (path.equals("/api/auth/login") || path.equals("/api/auth/register")));
+        return !("POST".equals(method) && path.equals("/api/auth/login"));
     }
 
     /** Remove expired entries every 15 minutes to prevent memory leaks. */
@@ -66,10 +66,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
             entry.getValue().windowStart.plusSeconds(WINDOW_SECONDS).isBefore(now));
     }
 
+    /**
+     * Le proxy ajoute l'IP reelle a la fin de X-Forwarded-For; les entrees
+     * precedentes viennent du client et sont donc falsifiables. Prendre la
+     * premiere laisserait n'importe qui reinitialiser son compteur en changeant
+     * l'en-tete a chaque tentative.
+     */
     private String getClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+            String[] hops = xff.split(",");
+            String lastHop = hops[hops.length - 1].trim();
+            if (!lastHop.isEmpty()) {
+                return lastHop;
+            }
         }
         return request.getRemoteAddr();
     }

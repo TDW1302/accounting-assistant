@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import {
-  User, UserRole, LoginRequest, RegisterRequest,
+  User, UserRole, LoginRequest,
   ChangePasswordRequest, AuthResponse, AiProviderRequest
 } from '../models/user.model';
 
@@ -22,10 +22,6 @@ export class AuthService {
         this.passwordExpired.set(response.passwordExpired);
       })
     );
-  }
-
-  register(request: RegisterRequest): Observable<User> {
-    return this.http.post<User>(`${this.url}/register`, request);
   }
 
   logout(): Observable<void> {

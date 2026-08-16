@@ -10,6 +10,7 @@ import be.vercauteren.accounting.entity.UserRole;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.specification.InvoiceSpecification;
 import jakarta.persistence.EntityNotFoundException;
+import be.vercauteren.accounting.util.FileSignatures;
 import be.vercauteren.accounting.util.InMemoryMultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -238,6 +239,7 @@ public class InvoiceService {
     @Transactional
     public InvoiceResponse uploadFile(Long id, MultipartFile file) throws IOException {
         validateFileType(file);
+        validateFileContent(file);
         Invoice invoice = getOrThrow(id);
         String generatedName = fileNameGenerator.generate(invoice);
 
@@ -305,6 +307,22 @@ public class InvoiceService {
             if (!ALLOWED_EXTENSIONS.contains(extension)) {
                 throw new IllegalArgumentException("File extension not allowed. Accepted: pdf, jpg, jpeg, png, gif, bmp, tiff, tif, webp");
             }
+        }
+    }
+
+    /**
+     * Le type MIME et l'extension sont declaratifs: on verifie que les premiers
+     * octets correspondent bien au format annonce.
+     */
+    private void validateFileContent(MultipartFile file) throws IOException {
+        String detected = FileSignatures.detect(file);
+        if (detected == null || !ALLOWED_CONTENT_TYPES.contains(detected)) {
+            throw new IllegalArgumentException(
+                "File content is not a valid PDF or image. Accepted: PDF, JPEG, PNG, GIF, BMP, TIFF, WebP");
+        }
+        if (!detected.equals(file.getContentType().toLowerCase())) {
+            throw new IllegalArgumentException(
+                "File content (" + detected + ") does not match its declared type (" + file.getContentType() + ")");
         }
     }
 

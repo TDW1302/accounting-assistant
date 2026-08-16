@@ -4,8 +4,6 @@ import be.vercauteren.accounting.dto.AiProviderRequest;
 import be.vercauteren.accounting.dto.AuthResponse;
 import be.vercauteren.accounting.dto.ChangePasswordRequest;
 import be.vercauteren.accounting.dto.LoginRequest;
-import be.vercauteren.accounting.dto.RegisterRequest;
-import be.vercauteren.accounting.dto.UserResponse;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.service.AuthService;
 import be.vercauteren.accounting.service.UserService;
@@ -33,12 +31,6 @@ public class AuthController {
                                                HttpServletRequest httpRequest) {
         AuthResponse response = authService.login(request, httpRequest);
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserResponse response = userService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/logout")

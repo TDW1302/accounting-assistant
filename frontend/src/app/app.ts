@@ -18,9 +18,9 @@ export class App implements OnInit {
   version = APP_VERSION;
 
   ngOnInit() {
-    this.configService.loadConfig();
     // 401 is expected when not logged in — silently ignore
     this.authService.getCurrentUser().subscribe({
+      next: () => this.configService.loadConfig(),
       error: () => {}
     });
   }

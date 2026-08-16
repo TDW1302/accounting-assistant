@@ -1,5 +1,7 @@
 package be.vercauteren.accounting.config;
 
+import be.vercauteren.accounting.service.AuthService;
+import be.vercauteren.accounting.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,13 +46,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthService authService,
+                                            UserService userService) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register")
+                .ignoringRequestMatchers("/api/auth/login")
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, authEx) ->
@@ -59,7 +62,7 @@ public class SecurityConfig {
                     res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/config").permitAll()
+                .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/import/**").hasRole("ADMIN")
@@ -79,6 +82,9 @@ public class SecurityConfig {
             );
 
         http.addFilterAfter(new CsrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class);
+        // Apres l'autorisation: le filtre a besoin de l'utilisateur authentifie.
+        http.addFilterAfter(new PasswordExpirationFilter(authService, userService),
+            org.springframework.security.web.access.intercept.AuthorizationFilter.class);
 
         return http.build();
     }

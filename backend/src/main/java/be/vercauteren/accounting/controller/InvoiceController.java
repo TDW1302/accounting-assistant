@@ -6,6 +6,7 @@ import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.service.InvoiceExtractionService;
 import be.vercauteren.accounting.service.InvoiceService;
+import be.vercauteren.accounting.util.FileSignatures;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -91,6 +92,11 @@ public class InvoiceController {
         String contentType = file.getContentType();
         if (contentType == null || !EXTRACT_ALLOWED_TYPES.contains(contentType.toLowerCase())) {
             throw new IllegalArgumentException("Only PDF and image files are accepted for extraction");
+        }
+        // Le type annonce ne prouve rien: le contenu doit correspondre.
+        String detected = FileSignatures.detect(file);
+        if (detected == null || !detected.equals(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("File content does not match its declared type");
         }
         return invoiceExtractionService.extract(file);
     }
