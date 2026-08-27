@@ -1,0 +1,13 @@
+# Le depot se developpe sous Windows et se construit sous Linux. Sans ces regles
+# une manipulation faite d'un cote reecrit les fins de ligne de l'autre: gradlew.bat
+# est deja passe en LF par accident, ce que cmd.exe ne lit pas de facon fiable.
+* text=auto
+
+# Scripts dont les fins de ligne sont imposees par leur interpreteur.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Genere: inutile de le presenter comme du texte a fusionner.
+frontend/package-lock.json -diff
