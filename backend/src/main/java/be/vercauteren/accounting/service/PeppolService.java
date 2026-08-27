@@ -7,6 +7,7 @@ import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.dto.PeppolDocumentResponse;
 import be.vercauteren.accounting.dto.PeppolImportRequest;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
@@ -94,7 +95,7 @@ public class PeppolService {
             null
         );
 
-        return invoiceService.create(invoiceRequest);
+        return invoiceService.create(invoiceRequest, InvoiceSource.PEPPOL);
     }
 
     private PeppolDocumentResponse toResponse(FalcoInboundDocument doc, boolean alreadyImported,

@@ -4,6 +4,7 @@ import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.entity.UserRole;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -117,7 +119,22 @@ public class InvoiceService {
      * Uses TransactionTemplate to avoid Spring proxy self-invocation issues.
      * When linkToNumber is set, creates a sub-invoice sharing the same number.
      */
-    public InvoiceResponse create(InvoiceRequest request) {
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source) {
+        // L'auteur se resout avant la transaction: une facture sans auteur ne doit
+        // pas exister, et la contrainte ck_invoice_author_required la refuserait de
+        // toute facon. Le seul chemin dispense est l'import Excel, qui ne passe pas ici.
+        User author = authService.getCurrentUser().orElseThrow(() -> new IllegalStateException(
+            "Cannot create an invoice without an author: no authenticated user in this context"));
+        return create(request, source, author);
+    }
+
+    /**
+     * Variante pour les traitements qui s'executent sans session — le scan d'inbox
+     * planifie — et doivent donc nommer eux-memes l'auteur a inscrire.
+     */
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source, User author) {
+        Objects.requireNonNull(author, "author");
+        Objects.requireNonNull(source, "source");
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
         txTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
 
@@ -192,7 +209,8 @@ public class InvoiceService {
                         .scopeDate(request.scopeDate())
                         .fileDetail(request.fileDetail())
                         .falcoDocumentId(request.falcoDocumentId())
-                        .createdBy(authService.getCurrentUser().orElse(null))
+                        .createdBy(author)
+                        .source(source)
                         .build();
 
                     return toResponse(invoiceRepository.save(invoice));

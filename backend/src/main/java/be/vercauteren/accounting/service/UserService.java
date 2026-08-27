@@ -23,6 +23,19 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Compte technique inscrit par la migration V5. Il n'est pas connectable et
+     * n'existe que pour etre l'auteur des factures que l'application cree
+     * d'elle-meme, la ou aucune session ne peut l'etre.
+     */
+    public static final String SYSTEM_USERNAME = "system";
+
+    public User getSystemUser() {
+        return userRepository.findByUsername(SYSTEM_USERNAME)
+            .orElseThrow(() -> new IllegalStateException(
+                "Technical user '" + SYSTEM_USERNAME + "' is missing: migration V5 has not run"));
+    }
+
     public List<UserResponse> findAll() {
         return userRepository.findAll().stream()
             .map(this::toResponse)
@@ -98,10 +111,14 @@ public class UserService {
 
     @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("User not found: " + id);
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
+        // Le supprimer priverait le scan d'inbox de son auteur, et la contrainte
+        // ck_invoice_author_required ferait alors echouer toute creation de nuit.
+        if (SYSTEM_USERNAME.equals(user.getUsername())) {
+            throw new IllegalArgumentException("The technical user cannot be deleted");
         }
-        userRepository.deleteById(id);
+        userRepository.delete(user);
     }
 
     public boolean isPasswordExpired(User user) {

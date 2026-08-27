@@ -90,6 +90,15 @@ public class Invoice {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
+    /**
+     * Volontairement sans valeur par defaut: une origine non renseignee doit
+     * echouer bruyamment a l'enregistrement plutot que d'etre devinee.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private InvoiceSource source;
+
     @Column(unique = true)
     private String falcoDocumentId;
 }

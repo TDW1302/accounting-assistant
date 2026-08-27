@@ -3,6 +3,7 @@ package be.vercauteren.accounting.service;
 import be.vercauteren.accounting.dto.ExcelImportResponse;
 import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
@@ -176,6 +177,10 @@ public class ExcelImportService {
                             .peppol(peppol)
                             .comment(comment)
                             .dateScope(DateScope.NONE)
+                            // Seule origine sans auteur, et la seule que la contrainte
+                            // ck_invoice_author_required laisse passer avec createdBy nul:
+                            // ces factures preexistent a l'application.
+                            .source(InvoiceSource.EXCEL_IMPORT)
                             .build();
 
                     invoiceRepository.save(invoice);

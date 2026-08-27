@@ -4,6 +4,7 @@ import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.entity.ExpenseCategory;
+import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.service.InvoiceExtractionService;
 import be.vercauteren.accounting.service.InvoiceService;
 import be.vercauteren.accounting.util.FileSignatures;
@@ -69,7 +70,7 @@ public class InvoiceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse create(@Valid @RequestBody InvoiceRequest request) {
-        return invoiceService.create(request);
+        return invoiceService.create(request, InvoiceSource.MANUAL);
     }
 
     @PutMapping("/{id}")

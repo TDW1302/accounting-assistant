@@ -4,6 +4,8 @@ import be.vercauteren.accounting.dto.InboxScanResult;
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSource;
+import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import be.vercauteren.accounting.util.InMemoryMultipartFile;
 import be.vercauteren.accounting.util.MimeTypes;
@@ -34,6 +36,8 @@ public class InboxService {
     private final InvoiceExtractionService extractionService;
     private final InvoiceService invoiceService;
     private final InvoiceRepository invoiceRepository;
+    private final AuthService authService;
+    private final UserService userService;
 
     @Value("${app.inbox.directory:./inbox}")
     private String inboxDirectory;
@@ -162,7 +166,10 @@ public class InboxService {
                 null
             );
 
-            var created = invoiceService.create(request);
+            // Le scan tourne aussi sans session, a 3h: l'auteur est alors le compte
+            // technique, pour qu'aucune facture ne naisse sans auteur.
+            User author = authService.getCurrentUser().orElseGet(userService::getSystemUser);
+            var created = invoiceService.create(request, InvoiceSource.INBOX, author);
             invoiceService.uploadFile(created.id(), multipartFile);
             Files.deleteIfExists(file);
             log.info("Created invoice #{} from {}", created.number(), fileName);
