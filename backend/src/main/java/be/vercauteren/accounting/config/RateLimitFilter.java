@@ -85,20 +85,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * nginx n'expose qu'une seule valeur de X-Forwarded-For, celle qu'il a lui-meme
-     * etablie apres avoir resolu le vrai client via real_ip (cf. nginx.conf). Prendre
-     * le dernier hop reste correct si un proxy supplementaire venait allonger la
-     * chaine: les entrees precedentes, elles, viennent du client et sont falsifiables.
+     * L'adresse est deja resolue quand la requete arrive ici: server.forward-headers-strategy
+     * la fait etablir en amont a partir de X-Forwarded-For, et l'en-tete lui-meme est retire
+     * de la requete. Le lire ici serait au mieux inutile, au pire nuisible — la strategie
+     * native laisse dans l'en-tete reecrit la portion non fiable de la chaine, celle que le
+     * client a fournie.
+     *
+     * <p>La confiance s'arrete donc a nginx, qui resout le vrai client par real_ip et ne
+     * transmet que cette valeur (cf. nginx.conf).
      */
     private String getClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            String[] hops = xff.split(",");
-            String lastHop = hops[hops.length - 1].trim();
-            if (!lastHop.isEmpty()) {
-                return lastHop;
-            }
-        }
         return request.getRemoteAddr();
     }
 

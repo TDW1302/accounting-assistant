@@ -18,10 +18,13 @@ class RateLimitFilterTest {
         filter = new RateLimitFilter();
     }
 
-    /** Requete de login telle que nginx la transmet: un seul hop dans X-Forwarded-For. */
+    /**
+     * Requete de login telle qu'elle parvient au filtre: l'adresse a deja ete resolue
+     * en amont a partir de X-Forwarded-For, et l'en-tete retire de la requete.
+     */
     private MockHttpServletRequest loginFrom(String clientIp) {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
-        request.addHeader("X-Forwarded-For", clientIp);
+        request.setRemoteAddr(clientIp);
         return request;
     }
 
@@ -87,16 +90,20 @@ class RateLimitFilterTest {
         assertThat(attempt("203.0.113.11", 401)).isEqualTo(401);
     }
 
-    /** Le dernier hop fait foi: les precedents sont fournis par le client. */
+    /**
+     * Le filtre ne lit plus X-Forwarded-For: l'en-tete est resolu et retire en amont, et
+     * la strategie native y laisse la portion non fiable de la chaine — celle que le client
+     * a fournie. Le lire redonnerait a l'appelant la main sur sa propre cle de comptage.
+     */
     @Test
-    void readsTheLastForwardedHop() throws Exception {
+    void ignoresAForwardedHeaderSuppliedByTheClient() throws Exception {
         for (int i = 0; i < 5; i++) {
             attempt("198.51.100.4", 401);
         }
 
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockHttpServletRequest spoofed = new MockHttpServletRequest("POST", "/api/auth/login");
-        spoofed.addHeader("X-Forwarded-For", "1.2.3.4, 198.51.100.4");
+        MockHttpServletRequest spoofed = loginFrom("198.51.100.4");
+        spoofed.addHeader("X-Forwarded-For", "1.2.3.4");
         filter.doFilter(spoofed, response, chainReturning(401));
 
         assertThat(response.getStatus()).isEqualTo(429);
@@ -107,7 +114,7 @@ class RateLimitFilterTest {
     @Test
     void ignoresEverythingButTheLoginEndpoint() throws Exception {
         MockHttpServletRequest other = new MockHttpServletRequest("GET", "/api/invoices");
-        other.addHeader("X-Forwarded-For", "203.0.113.12");
+        other.setRemoteAddr("203.0.113.12");
 
         for (int i = 0; i < 10; i++) {
             MockHttpServletResponse response = new MockHttpServletResponse();
