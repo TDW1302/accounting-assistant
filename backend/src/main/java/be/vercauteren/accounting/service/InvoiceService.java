@@ -210,6 +210,7 @@ public class InvoiceService {
     @Transactional
     public InvoiceResponse update(Long id, InvoiceRequest request) {
         Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
         Supplier supplier = supplierService.getOrThrow(request.supplierId());
 
         if (!invoice.getYear().equals(request.year())) {
@@ -241,6 +242,7 @@ public class InvoiceService {
         validateFileType(file);
         validateFileContent(file);
         Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
         String generatedName = fileNameGenerator.generate(invoice);
 
         if (invoice.getFilePath() != null) {
@@ -273,14 +275,7 @@ public class InvoiceService {
     @Transactional
     public void delete(Long id) {
         Invoice invoice = getOrThrow(id);
-
-        authService.getCurrentUser().ifPresent(currentUser -> {
-            if (currentUser.getRole() != UserRole.ADMIN) {
-                if (invoice.getCreatedBy() == null || !invoice.getCreatedBy().getId().equals(currentUser.getId())) {
-                    throw new IllegalStateException("You can only delete invoices you created");
-                }
-            }
-        });
+        assertCanModify(invoice);
 
         if (invoice.getFilePath() != null) {
             try {
@@ -290,6 +285,24 @@ public class InvoiceService {
             }
         }
         invoiceRepository.delete(invoice);
+    }
+
+    /**
+     * Un non-administrateur n'agit que sur ses propres factures. La suppression
+     * l'exigeait deja, la modification et le depot de document non: un utilisateur
+     * pouvait donc reecrire montants et document d'une facture encodee par un autre.
+     *
+     * <p>Sans utilisateur en session — l'inbox planifiee — l'operation passe: elle
+     * s'execute pour le compte de l'application, pas d'une personne.
+     */
+    private void assertCanModify(Invoice invoice) {
+        authService.getCurrentUser().ifPresent(currentUser -> {
+            if (currentUser.getRole() != UserRole.ADMIN) {
+                if (invoice.getCreatedBy() == null || !invoice.getCreatedBy().getId().equals(currentUser.getId())) {
+                    throw new IllegalStateException("You can only modify invoices you created");
+                }
+            }
+        });
     }
 
     private void validateFileType(MultipartFile file) {

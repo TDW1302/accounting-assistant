@@ -3,6 +3,7 @@ package be.vercauteren.accounting.config;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.entity.UserRole;
 import be.vercauteren.accounting.repository.UserRepository;
+import be.vercauteren.accounting.validation.PasswordPolicy;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,15 @@ public class AdminInitializer implements CommandLineRunner {
 
         if (userRepository.existsByUsername(adminUsername)) {
             log.info("Admin user '{}' already exists, skipping creation", adminUsername);
+            return;
+        }
+
+        // Controle place apres l'existence du compte: une installation deja en
+        // service ne doit pas se voir refuser un demarrage a cause d'un mot de
+        // passe faible qui n'est de toute facon plus utilise.
+        if (!PasswordPolicy.isValid(adminPassword)) {
+            log.error("ADMIN_PASSWORD does not meet the password policy — admin user '{}' was NOT created. {}",
+                adminUsername, PasswordPolicy.MESSAGE);
             return;
         }
 
