@@ -3,8 +3,8 @@
 Personal accounting app replacing an Excel file for managing purchase/sale invoices.
 
 ## Stack
-- **Backend**: Java 25 (OpenJDK 25.0.2), Spring Boot 4.0.3, Gradle — package `be.vercauteren.accounting`
-  - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.6, Apache POI 5.4.1, Anthropic Java SDK 2.16.0, Google GenAI SDK 1.44.0
+- **Backend**: Java 25 (OpenJDK 25.0.2), Spring Boot 4.0.8, Gradle — package `be.vercauteren.accounting`
+  - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, Apache POI 5.5.1, Anthropic Java SDK 2.58.0, Google GenAI SDK 1.68.0
 - **Frontend**: Angular 21.1, Node.js 24.13.1 (scoop: `/c/Users/verca/scoop/apps/nodejs-lts/current`, prioritize over global Node 18), TypeScript, SCSS
 - **DB**: PostgreSQL 17 (own container), connection via `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`
 - **Schema**: owned by Flyway (`backend/src/main/resources/db/migration`), Hibernate is `ddl-auto=validate` — never `update`. Any schema change requires a new `Vn__*.sql`.

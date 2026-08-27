@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+# Le job build redeclare ce dont il a besoin; les autres n'ecrivent rien.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -32,6 +36,26 @@ jobs:
           name: test-report
           path: backend/build/reports/tests/test/
           retention-days: 7
+
+  # Publie le graphe complet des dependances Gradle, transitives comprises, pour
+  # que Dependabot puisse alerter dessus: build.gradle ne nomme que les directes,
+  # et c'est dans les transitives (Tomcat, Jackson, okhttp...) que les CVE tombent.
+  # Le lockfile npm, lui, est deja analyse sans rien publier.
+  dependency-graph:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/dependency-submission@v4
+        with:
+          build-root-directory: backend
 
   build:
     needs: test
