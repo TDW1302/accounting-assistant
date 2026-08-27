@@ -58,7 +58,7 @@ jobs:
       # par defaut sur les depots prives. Le job resout et publie le graphe des qu'il
       # l'est, sans qu'il y ait rien a changer ici; d'ici la il n'a pas a rendre main
       # rouge, l'erreur restant visible dans son journal.
-      - uses: gradle/actions/dependency-submission@v4
+      - uses: gradle/actions/dependency-submission@v6
         with:
           build-root-directory: backend
           dependency-graph-continue-on-failure: true
