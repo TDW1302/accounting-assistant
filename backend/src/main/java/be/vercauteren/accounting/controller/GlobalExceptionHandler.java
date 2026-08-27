@@ -8,6 +8,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,6 +22,19 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(EntityNotFoundException ex) {
         return Map.of("error", ex.getMessage());
+    }
+
+    /**
+     * Un echec d'authentification remonte du controleur, pas de la chaine de
+     * filtres: sans ce handler il tombait dans handleUnexpected et le mauvais mot
+     * de passe repondait 500. Le message reste volontairement le meme quelle que
+     * soit la cause, pour ne pas reveler l'existence d'un compte.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Map<String, String> handleAuthentication(AuthenticationException ex) {
+        log.warn("Failed authentication attempt: {}", ex.getMessage());
+        return Map.of("error", "Invalid username or password");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
