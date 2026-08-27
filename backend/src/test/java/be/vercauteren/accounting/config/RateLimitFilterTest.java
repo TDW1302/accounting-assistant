@@ -3,6 +3,14 @@ package be.vercauteren.accounting.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -30,9 +38,27 @@ class RateLimitFilterTest {
 
     /** Chaine rendant le statut voulu, comme le ferait le controleur en aval. */
     private static MockFilterChain chainReturning(int status) {
+        return chainReturning(status, 0);
+    }
+
+    /**
+     * Le vrai controleur n'est pas instantane: il compare un mot de passe BCrypt,
+     * ce qui prend une centaine de millisecondes. C'est cette duree qui ouvre la
+     * fenetre entre le controle du quota et son incrementation.
+     */
+    private static MockFilterChain chainReturning(int status, long delayMillis) {
         return new MockFilterChain() {
             @Override
-            public void doFilter(jakarta.servlet.ServletRequest req, jakarta.servlet.ServletResponse res) {
+            public void doFilter(jakarta.servlet.ServletRequest req, jakarta.servlet.ServletResponse res)
+                    throws java.io.IOException {
+                if (delayMillis > 0) {
+                    try {
+                        Thread.sleep(delayMillis);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new java.io.IOException(e);
+                    }
+                }
                 ((HttpServletResponse) res).setStatus(status);
             }
         };
@@ -108,6 +134,45 @@ class RateLimitFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(429);
         assertThat(response.getHeader("Retry-After")).isNotNull();
+    }
+
+    /**
+     * Le quota doit tenir meme si les tentatives partent ensemble. Il se verifiait
+     * puis s'incrementait apres la chaine: vingt requetes simultanees lisaient
+     * toutes un compteur a zero et passaient toutes, ce qui vidait la protection
+     * de son sens des lors qu'on ne les envoyait plus une a une.
+     */
+    @Test
+    void holdsTheQuotaUnderConcurrentAttempts() throws Exception {
+        int concurrent = 20;
+        ExecutorService pool = Executors.newFixedThreadPool(concurrent);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger passedThrough = new AtomicInteger();
+        AtomicInteger throttled = new AtomicInteger();
+
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < concurrent; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                MockHttpServletResponse response = new MockHttpServletResponse();
+                filter.doFilter(loginFrom("203.0.113.99"), response, chainReturning(401, 100));
+                int status = response.getStatus();
+                if (status == 429) {
+                    throttled.incrementAndGet();
+                } else {
+                    passedThrough.incrementAndGet();
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (Future<?> future : futures) {
+            future.get(10, TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+
+        assertThat(passedThrough.get()).isEqualTo(5);
+        assertThat(throttled.get()).isEqualTo(concurrent - 5);
     }
 
     /** Le filtre ne s'applique qu'au login. */

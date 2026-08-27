@@ -30,31 +30,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String key = getClientIp(request) + ":" + request.getRequestURI();
 
-        AttemptRecord record = attempts.get(key);
-        if (record != null && !isExpired(record, Instant.now()) && record.count >= MAX_ATTEMPTS) {
-            reject(response, record);
-            return;
-        }
-
-        filterChain.doFilter(request, response);
-
-        // Seuls les echecs comptent. Compter aussi les succes verrouillait un
-        // utilisateur legitime qui ouvre une sixieme session dans le quart d'heure.
-        if (response.getStatus() == HttpStatus.UNAUTHORIZED.value()) {
-            registerFailure(key);
-        } else if (response.getStatus() < HttpStatus.BAD_REQUEST.value()) {
-            attempts.remove(key);
-        }
-    }
-
-    private void registerFailure(String key) {
-        attempts.compute(key, (k, existing) -> {
+        // Reservation atomique. Verifier puis incrementer apres coup laissait passer
+        // autant de requetes concurrentes qu'un attaquant en lancait avant que la
+        // premiere ne soit comptee: le quota ne tenait plus des qu'on cessait de les
+        // envoyer une a une.
+        AttemptRecord record = attempts.compute(key, (k, existing) -> {
             Instant now = Instant.now();
             if (existing == null || isExpired(existing, now)) {
                 return new AttemptRecord(now, 1);
             }
             return new AttemptRecord(existing.windowStart, existing.count + 1);
         });
+
+        if (record.count > MAX_ATTEMPTS) {
+            reject(response, record);
+            return;
+        }
+
+        filterChain.doFilter(request, response);
+
+        // Une ouverture de session reussie libere la reservation et efface les echecs
+        // qui l'ont precedee: sans cela un utilisateur legitime se verrouillait a sa
+        // sixieme connexion du quart d'heure. Une erreur en aval la laisse en place,
+        // faute de pouvoir conclure au succes.
+        if (response.getStatus() < HttpStatus.BAD_REQUEST.value()) {
+            attempts.remove(key);
+        }
     }
 
     private void reject(HttpServletResponse response, AttemptRecord record) throws IOException {

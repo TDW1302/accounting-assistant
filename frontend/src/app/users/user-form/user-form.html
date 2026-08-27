@@ -2,6 +2,10 @@
   <h1>{{ isEdit ? 'Modifier' : 'Nouvel' }} utilisateur</h1>
 </div>
 
+@if (error) {
+  <div class="error-message">{{ error }}</div>
+}
+
 <form [formGroup]="form" (ngSubmit)="save()">
   @if (!isEdit) {
     <div class="form-group">
@@ -18,7 +22,10 @@
   @if (!isEdit) {
     <div class="form-group">
       <label for="password">Mot de passe</label>
-      <input id="password" type="password" formControlName="password" placeholder="Min. 6 caractères">
+      <input id="password" type="password" formControlName="password" [placeholder]="passwordHint">
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <div class="error-message">{{ passwordHint }}</div>
+      }
     </div>
   }
 

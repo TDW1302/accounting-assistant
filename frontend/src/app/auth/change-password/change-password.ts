@@ -3,6 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { AiProvider } from '../../models/user.model';
+import {
+  PASSWORD_HINT,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  isPasswordValid
+} from '../../models/password-policy';
 
 @Component({
   selector: 'app-change-password',
@@ -22,6 +28,14 @@ export class ChangePassword implements OnInit {
   selectedProvider: AiProvider = 'CLAUDE';
   providerError = '';
   providerSaved = false;
+
+  readonly passwordHint = PASSWORD_HINT;
+  readonly passwordMinLength = PASSWORD_MIN_LENGTH;
+  readonly passwordMaxLength = PASSWORD_MAX_LENGTH;
+
+  get isNewPasswordValid(): boolean {
+    return isPasswordValid(this.newPassword);
+  }
 
   get isExpired(): boolean {
     return this.authService.passwordExpired();
