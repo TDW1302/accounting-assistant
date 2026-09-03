@@ -34,7 +34,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.apache.pdfbox:pdfbox:3.0.8'
-	implementation 'com.anthropic:anthropic-java:2.58.0'
+	implementation 'com.anthropic:anthropic-java:2.59.0'
 	implementation 'com.google.genai:google-genai:1.68.0'
 	implementation 'org.apache.poi:poi-ooxml:5.5.1'
 	compileOnly 'org.projectlombok:lombok'
