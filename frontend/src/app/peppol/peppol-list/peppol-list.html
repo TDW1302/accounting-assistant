@@ -49,8 +49,7 @@
     </thead>
     <tbody>
       @for (doc of documents(); track doc.id) {
-        <tr class="row-detail" [class.imported-row]="doc.alreadyImported"
-            (dblclick)="openDetail(doc)" title="Double-cliquez pour voir le détail">
+        <tr [class.imported-row]="doc.alreadyImported">
           <td>{{ doc.receivedAt | date:'dd/MM/yyyy' }}</td>
           <td>{{ doc.invoiceDate | date:'dd/MM/yyyy' }}</td>
           <td>{{ doc.senderName }}</td>
@@ -64,7 +63,7 @@
               <span class="badge-matched">À importer</span>
             }
           </td>
-          <td class="actions" (dblclick)="$event.stopPropagation()">
+          <td class="actions">
             @if (!doc.alreadyImported) {
               <button class="btn btn-sm btn-primary" (click)="toggleImport(doc)">
                 {{ expandedDocId === doc.id ? 'Annuler' : 'Importer' }}
@@ -139,8 +138,4 @@
     </tbody>
   </table>
   </div>
-}
-
-@if (detailDocument(); as doc) {
-  <app-peppol-detail [document]="doc" (closed)="closeDetail()" />
 }

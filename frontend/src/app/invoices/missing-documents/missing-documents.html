@@ -52,7 +52,7 @@
   <tbody>
     @for (inv of invoices(); track inv.id) {
       <tr class="row-detail" [class.sale-row]="inv.type === 'SALE'"
-          (dblclick)="openDetail(inv)" title="Double-cliquez pour voir le détail">
+          (dblclick)="openInvoice(inv)" title="Double-cliquez pour ouvrir la facture">
         <td>{{ inv.year }}</td>
         <td>{{ formatNumber(inv) }}</td>
         <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
@@ -89,7 +89,3 @@
   </tbody>
 </table>
 </div>
-
-@if (detailInvoice(); as inv) {
-  <app-invoice-detail [invoice]="inv" (closed)="closeDetail()" />
-}

@@ -138,7 +138,7 @@
   <tbody>
     @for (inv of displayedInvoices(); track inv.id) {
       <tr class="row-detail" [class.sale-row]="inv.type === 'SALE'"
-          (dblclick)="openDetail(inv)" title="Double-cliquez pour voir le détail">
+          (dblclick)="openInvoice(inv)" title="Double-cliquez pour ouvrir la facture">
         @if (searchActive) {
           <td>{{ inv.year }}</td>
         }
@@ -189,7 +189,3 @@
   }
 </table>
 </div>
-
-@if (detailInvoice(); as inv) {
-  <app-invoice-detail [invoice]="inv" (closed)="closeDetail()" />
-}

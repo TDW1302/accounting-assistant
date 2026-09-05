@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InvoiceService } from '../../services/invoice.service';
@@ -10,11 +10,10 @@ import { InboxService, InboxScanResult } from '../../services/inbox.service';
 import { ConfigService } from '../../services/config.service';
 import { Invoice, InvoiceType } from '../../models/invoice.model';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
-import { InvoiceDetail } from '../invoice-detail/invoice-detail';
 
 @Component({
   selector: 'app-invoice-list',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, InvoiceDetail],
+  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './invoice-list.html',
   styleUrl: './invoice-list.scss'
 })
@@ -25,6 +24,7 @@ export class InvoiceList implements OnInit {
   private readonly importService = inject(ImportService);
   private readonly inboxService = inject(InboxService);
   private readonly configService = inject(ConfigService);
+  private readonly router = inject(Router);
 
   invoices = signal<Invoice[]>([]);
   selectedYear = signal(new Date().getFullYear());
@@ -34,7 +34,6 @@ export class InvoiceList implements OnInit {
   importing = signal(false);
   scanResult = signal<InboxScanResult | null>(null);
   scanning = signal(false);
-  detailInvoice = signal<Invoice | null>(null);
 
   /** Les dernieres factures d'abord: c'est sur elles qu'on travaille. */
   sortAsc = signal(false);
@@ -134,17 +133,13 @@ export class InvoiceList implements OnInit {
     this.load();
   }
 
-  openDetail(inv: Invoice): void {
-    this.detailInvoice.set(inv);
-  }
-
-  closeDetail(): void {
-    this.detailInvoice.set(null);
+  /** Double-clic sur une ligne: meme destination que son bouton Modifier. */
+  openInvoice(inv: Invoice): void {
+    this.router.navigate(['/invoices', inv.id, 'edit']);
   }
 
   deleteInvoice(inv: Invoice): void {
     if (confirm(`Supprimer la facture #${inv.number} ?`)) {
-      this.closeDetail();
       this.invoiceService.delete(inv.id).subscribe({
         next: () => {
           if (this.searchActive) {

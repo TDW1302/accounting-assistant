@@ -26,7 +26,7 @@
   </thead>
   <tbody>
     @for (s of sortedSuppliers(); track s.id) {
-      <tr class="row-detail" (dblclick)="openDetail(s)" title="Double-cliquez pour voir le détail">
+      <tr class="row-detail" (dblclick)="openSupplier(s)" title="Double-cliquez pour ouvrir la fiche">
         <td>{{ s.name }}</td>
         <td class="mono">{{ s.alias }}</td>
         <td>{{ s.enterpriseNumber }}</td>
@@ -46,7 +46,3 @@
   </tbody>
 </table>
 </div>
-
-@if (detailSupplier(); as supplier) {
-  <app-supplier-detail [supplier]="supplier" (closed)="closeDetail()" />
-}

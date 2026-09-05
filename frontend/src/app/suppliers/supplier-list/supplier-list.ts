@@ -1,23 +1,22 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
 import { DateScope, dateScopeLabel } from '../../models/invoice.model';
-import { SupplierDetail } from '../supplier-detail/supplier-detail';
 
 export type SupplierSortColumn = 'name' | 'alias' | 'category';
 
 @Component({
   selector: 'app-supplier-list',
-  imports: [RouterLink, FormsModule, SupplierDetail],
+  imports: [RouterLink, FormsModule],
   templateUrl: './supplier-list.html',
   styleUrl: './supplier-list.scss'
 })
 export class SupplierList implements OnInit {
   private readonly supplierService = inject(SupplierService);
+  private readonly router = inject(Router);
   suppliers = signal<Supplier[]>([]);
-  detailSupplier = signal<Supplier | null>(null);
 
   readonly categories: { value: ExpenseCategory; label: string }[] =
     EXPENSE_CATEGORIES.map(value => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
@@ -80,17 +79,13 @@ export class SupplierList implements OnInit {
     this.supplierService.list(this.categoryFilter).subscribe(data => this.suppliers.set(data));
   }
 
-  openDetail(s: Supplier): void {
-    this.detailSupplier.set(s);
-  }
-
-  closeDetail(): void {
-    this.detailSupplier.set(null);
+  /** Double-clic sur une ligne: meme destination que son bouton Modifier. */
+  openSupplier(s: Supplier): void {
+    this.router.navigate(['/suppliers', s.id, 'edit']);
   }
 
   deleteSupplier(s: Supplier): void {
     if (confirm(`Supprimer le fournisseur "${s.name}" ?`)) {
-      this.closeDetail();
       this.supplierService.delete(s.id).subscribe({
         next: () => this.load(),
         error: () => alert('Erreur lors de la suppression du fournisseur.')

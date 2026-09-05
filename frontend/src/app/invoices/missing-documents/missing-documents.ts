@@ -1,27 +1,26 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InvoiceService } from '../../services/invoice.service';
 import { AuthService } from '../../services/auth.service';
 import { Invoice } from '../../models/invoice.model';
-import { InvoiceDetail } from '../invoice-detail/invoice-detail';
 
 @Component({
   selector: 'app-missing-documents',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, InvoiceDetail],
+  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './missing-documents.html',
   styleUrl: './missing-documents.scss'
 })
 export class MissingDocuments implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
   readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   invoices = signal<Invoice[]>([]);
   loading = signal(false);
   uploadingId = signal<number | null>(null);
   lastUploaded = signal<string | null>(null);
-  detailInvoice = signal<Invoice | null>(null);
 
   selectedYear: number | null = null;
   /** Les factures Peppol ont leur document chez Falco: exclues sauf demande explicite. */
@@ -50,12 +49,9 @@ export class MissingDocuments implements OnInit {
     });
   }
 
-  openDetail(inv: Invoice): void {
-    this.detailInvoice.set(inv);
-  }
-
-  closeDetail(): void {
-    this.detailInvoice.set(null);
+  /** Double-clic sur une ligne: meme destination que son bouton Modifier. */
+  openInvoice(inv: Invoice): void {
+    this.router.navigate(['/invoices', inv.id, 'edit']);
   }
 
   onFileSelected(event: Event, inv: Invoice): void {

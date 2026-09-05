@@ -17,7 +17,7 @@
   </thead>
   <tbody>
     @for (user of users(); track user.id) {
-      <tr class="row-detail" (dblclick)="openDetail(user)" title="Double-cliquez pour voir le détail">
+      <tr class="row-detail" (dblclick)="openUser(user)" title="Double-cliquez pour ouvrir la fiche">
         <td>{{ user.username }}</td>
         <td>{{ user.email }}</td>
         <td>
@@ -46,7 +46,3 @@
   </tbody>
 </table>
 </div>
-
-@if (detailUser(); as user) {
-  <app-user-detail [user]="user" (closed)="closeDetail()" />
-}
