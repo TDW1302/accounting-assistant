@@ -137,7 +137,8 @@
   </thead>
   <tbody>
     @for (inv of displayedInvoices(); track inv.id) {
-      <tr [class.sale-row]="inv.type === 'SALE'">
+      <tr [class.sale-row]="inv.type === 'SALE'"
+          (dblclick)="openDetail(inv)" title="Double-cliquez pour voir le détail">
         @if (searchActive) {
           <td>{{ inv.year }}</td>
         }
@@ -152,7 +153,7 @@
         <td>{{ inv.peppol ? 'V' : '' }}</td>
         <td class="mono">{{ inv.generatedFileName }}</td>
         <td>{{ inv.comment }}</td>
-        <td class="actions">
+        <td class="actions" (dblclick)="$event.stopPropagation()">
           <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
           <a class="btn btn-sm btn-secondary" [routerLink]="['/invoices/new']"
              [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
@@ -188,3 +189,7 @@
   }
 </table>
 </div>
+
+@if (detailInvoice(); as inv) {
+  <app-invoice-detail [invoice]="inv" (closed)="closeDetail()" />
+}

@@ -10,10 +10,11 @@ import { InboxService, InboxScanResult } from '../../services/inbox.service';
 import { ConfigService } from '../../services/config.service';
 import { Invoice, InvoiceType } from '../../models/invoice.model';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
+import { InvoiceDetail } from '../invoice-detail/invoice-detail';
 
 @Component({
   selector: 'app-invoice-list',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
+  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, InvoiceDetail],
   templateUrl: './invoice-list.html',
   styleUrl: './invoice-list.scss'
 })
@@ -33,6 +34,7 @@ export class InvoiceList implements OnInit {
   importing = signal(false);
   scanResult = signal<InboxScanResult | null>(null);
   scanning = signal(false);
+  detailInvoice = signal<Invoice | null>(null);
 
   /** Les dernieres factures d'abord: c'est sur elles qu'on travaille. */
   sortAsc = signal(false);
@@ -56,6 +58,14 @@ export class InvoiceList implements OnInit {
       vat: sum(inv => inv.vatAmount),
     };
   });
+
+  openDetail(inv: Invoice): void {
+    this.detailInvoice.set(inv);
+  }
+
+  closeDetail(): void {
+    this.detailInvoice.set(null);
+  }
 
   toggleSort(): void {
     this.sortAsc.update(asc => !asc);
@@ -134,6 +144,7 @@ export class InvoiceList implements OnInit {
 
   deleteInvoice(inv: Invoice): void {
     if (confirm(`Supprimer la facture #${inv.number} ?`)) {
+      this.closeDetail();
       this.invoiceService.delete(inv.id).subscribe({
         next: () => {
           if (this.searchActive) {
