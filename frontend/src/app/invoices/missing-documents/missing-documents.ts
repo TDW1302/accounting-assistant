@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InvoiceService } from '../../services/invoice.service';
@@ -15,6 +15,7 @@ import { Invoice } from '../../models/invoice.model';
 export class MissingDocuments implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
   readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   invoices = signal<Invoice[]>([]);
   loading = signal(false);
@@ -46,6 +47,11 @@ export class MissingDocuments implements OnInit {
         alert('Erreur lors du chargement des factures sans document.');
       }
     });
+  }
+
+  /** Double-clic sur une ligne: meme destination que son bouton Modifier. */
+  openInvoice(inv: Invoice): void {
+    this.router.navigate(['/invoices', inv.id, 'edit']);
   }
 
   onFileSelected(event: Event, inv: Invoice): void {

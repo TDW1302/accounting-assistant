@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models/supplier.model';
@@ -15,6 +15,7 @@ export type SupplierSortColumn = 'name' | 'alias' | 'category';
 })
 export class SupplierList implements OnInit {
   private readonly supplierService = inject(SupplierService);
+  private readonly router = inject(Router);
   suppliers = signal<Supplier[]>([]);
 
   readonly categories: { value: ExpenseCategory; label: string }[] =
@@ -76,6 +77,11 @@ export class SupplierList implements OnInit {
 
   load(): void {
     this.supplierService.list(this.categoryFilter).subscribe(data => this.suppliers.set(data));
+  }
+
+  /** Double-clic sur une ligne: meme destination que son bouton Modifier. */
+  openSupplier(s: Supplier): void {
+    this.router.navigate(['/suppliers', s.id, 'edit']);
   }
 
   deleteSupplier(s: Supplier): void {

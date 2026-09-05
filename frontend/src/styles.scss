@@ -193,6 +193,11 @@ table {
   }
 }
 
+// Une ligne de liste ouvre sa fiche au double-clic: le curseur l'annonce.
+tbody tr.row-detail {
+  cursor: pointer;
+}
+
 // Responsive breakpoints
 $breakpoint-tablet: 768px;
 $breakpoint-phone: 480px;

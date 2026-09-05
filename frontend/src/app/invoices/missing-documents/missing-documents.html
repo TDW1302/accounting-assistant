@@ -51,7 +51,8 @@
   </thead>
   <tbody>
     @for (inv of invoices(); track inv.id) {
-      <tr [class.sale-row]="inv.type === 'SALE'">
+      <tr class="row-detail" [class.sale-row]="inv.type === 'SALE'"
+          (dblclick)="openInvoice(inv)" title="Double-cliquez pour ouvrir la facture">
         <td>{{ inv.year }}</td>
         <td>{{ formatNumber(inv) }}</td>
         <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
@@ -61,7 +62,7 @@
         <td>{{ inv.peppol ? 'V' : '' }}</td>
         <td class="mono">{{ inv.generatedFileName }}</td>
         <td>{{ inv.comment }}</td>
-        <td class="actions">
+        <td class="actions" (dblclick)="$event.stopPropagation()">
           @if (authService.hasRole('ADMIN') || authService.hasRole('USER')) {
             <button class="btn btn-sm btn-primary" (click)="fileInput.click()"
                     [disabled]="uploadingId() === inv.id">

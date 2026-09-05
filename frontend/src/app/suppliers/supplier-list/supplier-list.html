@@ -26,14 +26,14 @@
   </thead>
   <tbody>
     @for (s of sortedSuppliers(); track s.id) {
-      <tr>
+      <tr class="row-detail" (dblclick)="openSupplier(s)" title="Double-cliquez pour ouvrir la fiche">
         <td>{{ s.name }}</td>
         <td class="mono">{{ s.alias }}</td>
         <td>{{ s.enterpriseNumber }}</td>
         <td>{{ categoryLabel(s.category) }}</td>
         <td>{{ scopeLabel(s.defaultDateScope) }}</td>
         <td>{{ s.defaultPeppol ? 'V' : '' }}</td>
-        <td class="actions">
+        <td class="actions" (dblclick)="$event.stopPropagation()">
           <a class="btn btn-sm" [routerLink]="['/suppliers', s.id, 'edit']">Modifier</a>
           <button class="btn btn-sm btn-danger" (click)="deleteSupplier(s)">Supprimer</button>
         </td>
