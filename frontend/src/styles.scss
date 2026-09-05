@@ -193,6 +193,111 @@ table {
   }
 }
 
+// Fenetre de detail: ouverte au double-clic sur une ligne de liste, elle est
+// partagee par toutes les listes via app-detail-modal. Les styles sont globaux
+// car le contenu (sections, dl) est projete depuis chaque composant de detail.
+.detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.detail-modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 720px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+}
+
+.detail-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+
+  section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+
+    &.full-width {
+      grid-column: 1 / -1;
+    }
+  }
+
+  h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+  }
+
+  dt {
+    color: #475569;
+    font-size: 0.8125rem;
+  }
+
+  dd {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+}
+
+.detail-missing {
+  color: #94a3b8;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.detail-comment {
+  white-space: pre-wrap;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+// Une ligne de liste ouvre son detail au double-clic: le curseur l'annonce.
+tbody tr.row-detail {
+  cursor: pointer;
+}
+
 // Responsive breakpoints
 $breakpoint-tablet: 768px;
 $breakpoint-phone: 480px;
@@ -275,6 +380,26 @@ $breakpoint-phone: 480px;
   table th, table td {
     padding: 0.375rem 0.5rem;
     font-size: 0.8125rem;
+  }
+
+  .detail-overlay {
+    padding: 0;
+  }
+
+  .detail-modal {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .detail-actions {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
 }
 

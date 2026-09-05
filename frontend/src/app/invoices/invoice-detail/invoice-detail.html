@@ -1,108 +1,96 @@
-<div class="detail-overlay" (click)="close()">
-  <div class="detail-modal" (click)="$event.stopPropagation()">
-    @let inv = invoice();
+@let inv = invoice();
 
-    <div class="detail-header">
-      <h2>{{ title() }}</h2>
-      <button class="btn btn-sm" (click)="close()" aria-label="Fermer">✕</button>
-    </div>
-
-    <div class="detail-body">
-      <section>
-        <h3>Identification</h3>
-        <dl>
-          <dt>Fournisseur / Client</dt>
-          <dd>{{ inv.supplier.name }}</dd>
-          @if (inv.supplier.alias) {
-            <dt>Alias</dt>
-            <dd>{{ inv.supplier.alias }}</dd>
-          }
-          @if (inv.supplier.enterpriseNumber) {
-            <dt>N° d'entreprise</dt>
-            <dd>{{ inv.supplier.enterpriseNumber }}</dd>
-          }
-          @if (categoryLabel()) {
-            <dt>Catégorie</dt>
-            <dd>{{ categoryLabel() }}</dd>
-          }
-        </dl>
-      </section>
-
-      <section>
-        <h3>Montants</h3>
-        <dl>
-          <dt>TTC</dt>
-          <dd>{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</dd>
-          <dt>HTVA</dt>
-          <dd>{{ inv.amountExVat | currency:'EUR':'symbol':'1.2-2' }}</dd>
-          <dt>TVA</dt>
-          <dd>{{ inv.vatAmount | currency:'EUR':'symbol':'1.2-2' }}</dd>
-        </dl>
-      </section>
-
-      <section>
-        <h3>Dates</h3>
-        <dl>
-          <dt>Réception</dt>
-          <dd>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</dd>
-          <dt>Paiement</dt>
-          <dd>
-            @if (inv.paymentDate) {
-              {{ inv.paymentDate | date:'dd/MM/yyyy' }}
-            } @else {
-              <span class="missing">Non payée</span>
-            }
-          </dd>
-          @if (scopeLabel()) {
-            <dt>Portée de la date</dt>
-            <dd>{{ scopeLabel() }}</dd>
-          }
-          @if (inv.scopeDate) {
-            <dt>Date de référence</dt>
-            <dd>{{ inv.scopeDate | date:'dd/MM/yyyy' }}</dd>
-          }
-        </dl>
-      </section>
-
-      <section>
-        <h3>Document</h3>
-        <dl>
-          <dt>Peppol</dt>
-          <dd>{{ inv.peppol ? 'Oui' : 'Non' }}</dd>
-          <dt>Nom de fichier</dt>
-          <dd class="mono">{{ inv.generatedFileName }}</dd>
-          @if (inv.fileDetail) {
-            <dt>Détail fichier</dt>
-            <dd>{{ inv.fileDetail }}</dd>
-          }
-          <dt>Fichier joint</dt>
-          <dd>
-            @if (inv.filePath) {
-              <span class="mono">{{ inv.filePath }}</span>
-            } @else {
-              <span class="missing">Aucun document</span>
-            }
-          </dd>
-          @if (inv.falcoDocumentId) {
-            <dt>ID document Peppol</dt>
-            <dd class="mono">{{ inv.falcoDocumentId }}</dd>
-          }
-        </dl>
-      </section>
-
-      @if (inv.comment) {
-        <section class="full-width">
-          <h3>Commentaire</h3>
-          <p class="comment">{{ inv.comment }}</p>
-        </section>
+<app-detail-modal [title]="title()" (closed)="closed.emit()">
+  <section>
+    <h3>Identification</h3>
+    <dl>
+      <dt>Fournisseur / Client</dt>
+      <dd>{{ inv.supplier.name }}</dd>
+      @if (inv.supplier.alias) {
+        <dt>Alias</dt>
+        <dd>{{ inv.supplier.alias }}</dd>
       }
-    </div>
+      @if (inv.supplier.enterpriseNumber) {
+        <dt>N° d'entreprise</dt>
+        <dd>{{ inv.supplier.enterpriseNumber }}</dd>
+      }
+      @if (categoryLabel()) {
+        <dt>Catégorie</dt>
+        <dd>{{ categoryLabel() }}</dd>
+      }
+    </dl>
+  </section>
 
-    <div class="detail-actions">
-      <a class="btn btn-primary" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
-      <a class="btn btn-secondary" [routerLink]="['/invoices/new']"
-         [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
-      <button class="btn" (click)="close()">Fermer</button>
-    </div>
-  </div>
-</div>
+  <section>
+    <h3>Montants</h3>
+    <dl>
+      <dt>TTC</dt>
+      <dd>{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</dd>
+      <dt>HTVA</dt>
+      <dd>{{ inv.amountExVat | currency:'EUR':'symbol':'1.2-2' }}</dd>
+      <dt>TVA</dt>
+      <dd>{{ inv.vatAmount | currency:'EUR':'symbol':'1.2-2' }}</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h3>Dates</h3>
+    <dl>
+      <dt>Réception</dt>
+      <dd>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</dd>
+      <dt>Paiement</dt>
+      <dd>
+        @if (inv.paymentDate) {
+          {{ inv.paymentDate | date:'dd/MM/yyyy' }}
+        } @else {
+          <span class="detail-missing">Non payée</span>
+        }
+      </dd>
+      @if (scopeLabel()) {
+        <dt>Portée de la date</dt>
+        <dd>{{ scopeLabel() }}</dd>
+      }
+      @if (inv.scopeDate) {
+        <dt>Date de référence</dt>
+        <dd>{{ inv.scopeDate | date:'dd/MM/yyyy' }}</dd>
+      }
+    </dl>
+  </section>
+
+  <section>
+    <h3>Document</h3>
+    <dl>
+      <dt>Peppol</dt>
+      <dd>{{ inv.peppol ? 'Oui' : 'Non' }}</dd>
+      <dt>Nom de fichier</dt>
+      <dd class="mono">{{ inv.generatedFileName }}</dd>
+      @if (inv.fileDetail) {
+        <dt>Détail fichier</dt>
+        <dd>{{ inv.fileDetail }}</dd>
+      }
+      <dt>Fichier joint</dt>
+      <dd>
+        @if (inv.filePath) {
+          <span class="mono">{{ inv.filePath }}</span>
+        } @else {
+          <span class="detail-missing">Aucun document</span>
+        }
+      </dd>
+      @if (inv.falcoDocumentId) {
+        <dt>ID document Peppol</dt>
+        <dd class="mono">{{ inv.falcoDocumentId }}</dd>
+      }
+    </dl>
+  </section>
+
+  @if (inv.comment) {
+    <section class="full-width">
+      <h3>Commentaire</h3>
+      <p class="detail-comment">{{ inv.comment }}</p>
+    </section>
+  }
+
+  <a detail-action class="btn btn-primary" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
+  <a detail-action class="btn btn-secondary" [routerLink]="['/invoices/new']"
+     [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
+</app-detail-modal>

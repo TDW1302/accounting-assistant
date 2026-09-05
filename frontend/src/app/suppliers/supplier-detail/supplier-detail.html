@@ -1,0 +1,53 @@
+@let s = supplier();
+
+<app-detail-modal [title]="s.name" (closed)="closed.emit()">
+  <section>
+    <h3>Identification</h3>
+    <dl>
+      <dt>Nom</dt>
+      <dd>{{ s.name }}</dd>
+      <dt>Alias</dt>
+      <dd>
+        @if (s.alias) {
+          <span class="mono">{{ s.alias }}</span>
+        } @else {
+          <span class="detail-missing">Aucun</span>
+        }
+      </dd>
+      <dt>N° d'entreprise</dt>
+      <dd>
+        @if (s.enterpriseNumber) {
+          <span class="mono">{{ s.enterpriseNumber }}</span>
+        } @else {
+          <span class="detail-missing">Non renseigné</span>
+        }
+      </dd>
+      <dt>Catégorie</dt>
+      <dd>
+        @if (categoryLabel()) {
+          {{ categoryLabel() }}
+        } @else {
+          <span class="detail-missing">Aucune</span>
+        }
+      </dd>
+    </dl>
+  </section>
+
+  <section>
+    <h3>Valeurs par défaut des factures</h3>
+    <dl>
+      <dt>Portée de la date</dt>
+      <dd>
+        @if (scopeLabel()) {
+          {{ scopeLabel() }}
+        } @else {
+          <span class="detail-missing">Aucune</span>
+        }
+      </dd>
+      <dt>Peppol</dt>
+      <dd>{{ s.defaultPeppol ? 'Oui' : 'Non' }}</dd>
+    </dl>
+  </section>
+
+  <a detail-action class="btn btn-primary" [routerLink]="['/suppliers', s.id, 'edit']">Modifier</a>
+</app-detail-modal>

@@ -1,14 +1,14 @@
-import { Component, computed, HostListener, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { dateScopeLabel, Invoice } from '../../models/invoice.model';
 import { EXPENSE_CATEGORY_LABELS } from '../../models/supplier.model';
+import { DetailModal } from '../../shared/detail-modal/detail-modal';
 
 @Component({
   selector: 'app-invoice-detail',
-  imports: [RouterLink, CurrencyPipe, DatePipe],
-  templateUrl: './invoice-detail.html',
-  styleUrl: './invoice-detail.scss'
+  imports: [RouterLink, CurrencyPipe, DatePipe, DetailModal],
+  templateUrl: './invoice-detail.html'
 })
 export class InvoiceDetail {
   readonly invoice = input.required<Invoice>();
@@ -26,10 +26,4 @@ export class InvoiceDetail {
   });
 
   readonly scopeLabel = computed(() => dateScopeLabel(this.invoice().dateScope));
-
-  /** Echap ferme le detail: c'est le reflexe attendu d'une fenetre modale. */
-  @HostListener('document:keydown.escape')
-  close(): void {
-    this.closed.emit();
-  }
 }

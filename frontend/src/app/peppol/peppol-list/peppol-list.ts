@@ -6,10 +6,11 @@ import { SupplierService } from '../../services/supplier.service';
 import { PeppolDocument, PeppolImportRequest } from '../../models/peppol.model';
 import { Supplier } from '../../models/supplier.model';
 import { DateScope, InvoiceType } from '../../models/invoice.model';
+import { PeppolDetail } from '../peppol-detail/peppol-detail';
 
 @Component({
   selector: 'app-peppol-list',
-  imports: [CurrencyPipe, DatePipe, FormsModule],
+  imports: [CurrencyPipe, DatePipe, FormsModule, PeppolDetail],
   templateUrl: './peppol-list.html',
   styleUrl: './peppol-list.scss'
 })
@@ -18,6 +19,7 @@ export class PeppolList implements OnInit {
   private readonly supplierService = inject(SupplierService);
 
   documents = signal<PeppolDocument[]>([]);
+  detailDocument = signal<PeppolDocument | null>(null);
   suppliers = signal<Supplier[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
@@ -69,6 +71,14 @@ export class PeppolList implements OnInit {
     this.receivedBefore = '';
     this.senderName = '';
     this.load();
+  }
+
+  openDetail(doc: PeppolDocument): void {
+    this.detailDocument.set(doc);
+  }
+
+  closeDetail(): void {
+    this.detailDocument.set(null);
   }
 
   toggleImport(doc: PeppolDocument): void {

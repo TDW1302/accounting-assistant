@@ -59,14 +59,6 @@ export class InvoiceList implements OnInit {
     };
   });
 
-  openDetail(inv: Invoice): void {
-    this.detailInvoice.set(inv);
-  }
-
-  closeDetail(): void {
-    this.detailInvoice.set(null);
-  }
-
   toggleSort(): void {
     this.sortAsc.update(asc => !asc);
   }
@@ -140,6 +132,14 @@ export class InvoiceList implements OnInit {
     this.dateTo = '';
     this.category = null;
     this.load();
+  }
+
+  openDetail(inv: Invoice): void {
+    this.detailInvoice.set(inv);
+  }
+
+  closeDetail(): void {
+    this.detailInvoice.set(null);
   }
 
   deleteInvoice(inv: Invoice): void {

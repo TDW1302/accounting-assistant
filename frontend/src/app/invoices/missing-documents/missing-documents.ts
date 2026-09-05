@@ -5,10 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { InvoiceService } from '../../services/invoice.service';
 import { AuthService } from '../../services/auth.service';
 import { Invoice } from '../../models/invoice.model';
+import { InvoiceDetail } from '../invoice-detail/invoice-detail';
 
 @Component({
   selector: 'app-missing-documents',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
+  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, InvoiceDetail],
   templateUrl: './missing-documents.html',
   styleUrl: './missing-documents.scss'
 })
@@ -20,6 +21,7 @@ export class MissingDocuments implements OnInit {
   loading = signal(false);
   uploadingId = signal<number | null>(null);
   lastUploaded = signal<string | null>(null);
+  detailInvoice = signal<Invoice | null>(null);
 
   selectedYear: number | null = null;
   /** Les factures Peppol ont leur document chez Falco: exclues sauf demande explicite. */
@@ -46,6 +48,14 @@ export class MissingDocuments implements OnInit {
         alert('Erreur lors du chargement des factures sans document.');
       }
     });
+  }
+
+  openDetail(inv: Invoice): void {
+    this.detailInvoice.set(inv);
+  }
+
+  closeDetail(): void {
+    this.detailInvoice.set(null);
   }
 
   onFileSelected(event: Event, inv: Invoice): void {

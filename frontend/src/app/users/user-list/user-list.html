@@ -17,7 +17,7 @@
   </thead>
   <tbody>
     @for (user of users(); track user.id) {
-      <tr>
+      <tr class="row-detail" (dblclick)="openDetail(user)" title="Double-cliquez pour voir le détail">
         <td>{{ user.username }}</td>
         <td>{{ user.email }}</td>
         <td>
@@ -31,7 +31,7 @@
           </span>
         </td>
         <td>{{ user.createdAt | date:'dd/MM/yyyy' }}</td>
-        <td>
+        <td (dblclick)="$event.stopPropagation()">
           <div class="actions">
             <a [routerLink]="['/users', user.id, 'edit']" class="btn btn-sm">Modifier</a>
             <button class="btn btn-sm btn-danger" (click)="deleteUser(user)">Supprimer</button>
@@ -46,3 +46,7 @@
   </tbody>
 </table>
 </div>
+
+@if (detailUser(); as user) {
+  <app-user-detail [user]="user" (closed)="closeDetail()" />
+}
