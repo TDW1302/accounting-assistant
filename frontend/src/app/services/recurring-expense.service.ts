@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Invoice } from '../models/invoice.model';
 import {
+  AttachableInvoice,
+  RecurringAttachRequest,
   RecurringExpense,
   RecurringExpenseRequest,
   RecurringGenerationRequest,
@@ -32,6 +35,25 @@ export class RecurringExpenseService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
+  }
+
+  /** Les lignes du facturier déjà rattachées à ce modèle. */
+  entries(id: number): Observable<Invoice[]> {
+    return this.http.get<Invoice[]>(`${this.url}/${id}/entries`);
+  }
+
+  /** Lignes du même fournisseur, sans document, encore rattachables. */
+  attachable(id: number): Observable<AttachableInvoice[]> {
+    return this.http.get<AttachableInvoice[]>(`${this.url}/${id}/attachable`);
+  }
+
+  /** Rattache une ligne existante. Son numéro et son année ne changent pas. */
+  attach(id: number, req: RecurringAttachRequest): Observable<Invoice> {
+    return this.http.post<Invoice>(`${this.url}/${id}/attach`, req);
+  }
+
+  detach(invoiceId: number): Observable<Invoice> {
+    return this.http.delete<Invoice>(`${this.url}/entries/${invoiceId}`);
   }
 
   /** `upTo` permet de préparer l'avenir: le loyer de janvier avant le 1er. */

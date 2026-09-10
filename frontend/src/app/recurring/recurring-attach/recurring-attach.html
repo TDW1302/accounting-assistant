@@ -1,0 +1,128 @@
+<div class="page-header">
+  <h1>Rattacher des lignes existantes</h1>
+  <div class="header-actions">
+    <a class="btn" routerLink="/recurring">Retour</a>
+  </div>
+</div>
+
+@if (expense(); as e) {
+  <div class="expense-summary">
+    <dl>
+      <div><dt>Modèle :</dt><dd>{{ e.label }}</dd></div>
+      <div><dt>Fournisseur :</dt><dd>{{ e.supplier.name }}</dd></div>
+      <div><dt>Rythme :</dt><dd>{{ periodicityLabel(e.periodicity) }}</dd></div>
+      <div><dt>Du :</dt><dd>{{ e.startDate | date:'dd/MM/yyyy' }}</dd></div>
+      @if (e.endDate) {
+        <div><dt>Au :</dt><dd>{{ e.endDate | date:'dd/MM/yyyy' }}</dd></div>
+      }
+    </dl>
+  </div>
+}
+
+<p class="hint">
+  Les loyers déjà repris de l'Excel restent où l'historique les a mis : leur numéro
+  et leur année ne changent pas. Les rattacher inscrit seulement la période qu'ils
+  couvrent, ce qui évite que le modèle vous la propose une seconde fois et les
+  sort de « Documents manquants ».
+  Si une période antérieure manque à l'appel, reculez la première échéance du modèle.
+</p>
+
+@if (error(); as message) {
+  <div class="form-error">{{ message }}</div>
+}
+
+<section>
+  <div class="section-header">
+    <h2>Lignes rattachables</h2>
+  </div>
+
+  <div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>N°</th>
+        <th>Année</th>
+        <th>Date</th>
+        <th class="text-right">TTC</th>
+        <th>Commentaire</th>
+        <th>Période couverte</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of candidates(); track c.invoiceId) {
+        <tr>
+          <td class="mono">{{ c.displayNumber }}</td>
+          <td>{{ c.year }}</td>
+          <td>{{ c.receptionDate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-right">{{ c.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+          <td>{{ c.comment }}</td>
+          <td>
+            <input class="period-input" type="date"
+                   [(ngModel)]="chosenPeriod[c.invoiceId]"
+                   [attr.aria-label]="'Période couverte par ' + c.displayNumber">
+            @if (!c.suggestionAvailable) {
+              <span class="issue">{{ c.suggestionIssue }}</span>
+            }
+          </td>
+          <td class="actions">
+            <button class="btn btn-sm btn-primary" (click)="attach(c)"
+                    [disabled]="busyInvoiceId() === c.invoiceId">
+              Rattacher
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7" class="empty">
+            Aucune ligne sans document pour ce fournisseur.
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-header">
+    <h2>Lignes déjà rattachées</h2>
+  </div>
+
+  <div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>N°</th>
+        <th>Année</th>
+        <th>Période</th>
+        <th>Date</th>
+        <th class="text-right">TTC</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (inv of entries(); track inv.id) {
+        <tr>
+          <td class="mono">{{ inv.displayNumber }}</td>
+          <td>{{ inv.year }}</td>
+          <td>{{ inv.scopeDate | date:'MM/yyyy' }}</td>
+          <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+          <td class="actions">
+            <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Ouvrir</a>
+            <button class="btn btn-sm btn-danger" (click)="detach(inv)"
+                    [disabled]="busyInvoiceId() === inv.id">
+              Détacher
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty">Aucune ligne rattachée pour l'instant.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  </div>
+</section>

@@ -68,3 +68,22 @@ export interface RecurringGenerationResponse {
   created: { id: number; displayNumber: string; year: number }[];
   skipped: string[];
 }
+
+/** Une ligne déjà au facturier qu'on peut rattacher à un modèle. */
+export interface AttachableInvoice {
+  invoiceId: number;
+  displayNumber: string;
+  year: number;
+  receptionDate: string;
+  amountIncVat: number | null;
+  comment: string | null;
+  suggestedPeriodStart: string;
+  suggestedPeriodLabel: string;
+  suggestionAvailable: boolean;
+  suggestionIssue: string | null;
+}
+
+export interface RecurringAttachRequest {
+  invoiceId: number;
+  periodStart: string;
+}

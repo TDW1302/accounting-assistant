@@ -34,13 +34,19 @@ public class InvoiceSpecification {
      * No file on disk. Les factures Peppol en sont exclues par defaut: leur document
      * reste chez Falco, leur absence de fichier n'est donc pas un oubli. Les inclure
      * sert a repasser derriere pour charger celles qu'on veut aussi en local.
-     * Les depenses de la serie EXPENSE sont exclues dans tous les cas.
+     * Les depenses de la serie EXPENSE et les lignes rattachees a un modele
+     * recurrent sont exclues dans tous les cas.
      */
     public static Specification<Invoice> missingDocument(boolean includePeppol) {
         return (root, query, cb) -> {
             // Les depenses contractuelles n'attendent aucun document: les lister
             // comme manquantes rendrait l'ecran inutilisable des le premier loyer.
-            var documented = cb.equal(root.get("series"), InvoiceSeries.INVOICE);
+            // Une ligne rattachee a un modele recurrent non plus, meme si son
+            // numero est reste dans la serie documentee — un loyer repris de
+            // l'Excel n'a jamais eu de facture et n'en aura jamais.
+            var documented = cb.and(
+                cb.equal(root.get("series"), InvoiceSeries.INVOICE),
+                cb.isNull(root.get("recurringExpense")));
             return includePeppol
                 ? cb.and(documented, cb.isNull(root.get("filePath")))
                 : cb.and(documented, cb.isNull(root.get("filePath")), cb.isFalse(root.get("peppol")));

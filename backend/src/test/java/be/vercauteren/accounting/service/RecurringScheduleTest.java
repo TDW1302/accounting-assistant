@@ -110,6 +110,53 @@ class RecurringScheduleTest {
     }
 
     @Test
+    @DisplayName("Une periode du modele donne l'echeance qui la couvre")
+    void dueDateForFindsTheOccurrenceCoveringAPeriod() {
+        // Loyer du 5: l'echeance de mars tombe le 5, apres le debut de sa periode.
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-01-05"), null, Periodicity.MONTHLY, d("2024-03-01")))
+            .contains(d("2024-03-05"));
+    }
+
+    @Test
+    @DisplayName("Une periode anterieure au modele n'a pas d'echeance")
+    void dueDateForRejectsAPeriodBeforeTheStart() {
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-01-05"), null, Periodicity.MONTHLY, d("2023-12-01")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Une periode posterieure a la fin du modele n'a pas d'echeance")
+    void dueDateForRejectsAPeriodAfterTheEnd() {
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-01-05"), d("2024-06-30"), Periodicity.MONTHLY, d("2024-08-01")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Un trimestre que le modele ne couvre pas n'a pas d'echeance")
+    void dueDateForRejectsAnUncoveredQuarter() {
+        // Ancre en fevrier: les echeances tombent en fevrier, mai, aout, novembre,
+        // donc une par trimestre. Le trimestre demande existe bien.
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-02-15"), null, Periodicity.QUARTERLY, d("2024-04-01")))
+            .contains(d("2024-05-15"));
+        // Mais rien avant la premiere echeance.
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-02-15"), null, Periodicity.QUARTERLY, d("2023-10-01")))
+            .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Une periode annuelle se retrouve depuis le 1er janvier")
+    void dueDateForHandlesYearlyPeriods() {
+        assertThat(RecurringSchedule.dueDateFor(
+            d("2024-06-30"), null, Periodicity.YEARLY, d("2026-01-01")))
+            .contains(d("2026-06-30"));
+    }
+
+    @Test
     @DisplayName("Une date de debut lointaine ne fait pas tourner la boucle sans fin")
     void loopIsBounded() {
         List<LocalDate> dates = RecurringSchedule.dueDates(

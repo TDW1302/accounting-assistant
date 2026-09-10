@@ -4,6 +4,7 @@ import be.vercauteren.accounting.entity.Periodicity;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -58,6 +59,24 @@ public final class RecurringSchedule {
                 .withMonth((dueDate.getMonthValue() - 1) / 3 * 3 + 1);
             case YEARLY -> LocalDate.of(dueDate.getYear(), 1, 1);
         };
+    }
+
+    /**
+     * La date d'echeance qui couvre exactement {@code periodStart}, si le modele
+     * en a bien une. Sert au rattachement d'une ligne existante: la periode vient
+     * du client, et seule une periode reellement prevue par le modele est
+     * acceptable.
+     *
+     * <p>L'horizon depasse volontairement la periode demandee: une echeance
+     * tombe apres le premier jour de la periode qu'elle couvre — un loyer du 5
+     * couvre le mois entier — et s'arreter a {@code periodStart} la manquerait.
+     */
+    static Optional<LocalDate> dueDateFor(LocalDate startDate, LocalDate endDate,
+                                           Periodicity periodicity, LocalDate periodStart) {
+        LocalDate horizon = periodStart.plusMonths(periodicity.months());
+        return dueDates(startDate, endDate, periodicity, horizon).stream()
+            .filter(due -> periodStart(periodicity, due).equals(periodStart))
+            .findFirst();
     }
 
     /** "09/2026", "2026 T3", "2026". */

@@ -11,6 +11,8 @@
   Dépenses contractuelles sans facture — loyer, frais bancaires, PLCI. Aucun document
   n'est attendu : elles n'apparaissent pas dans « Documents manquants » et sont
   numérotées à part (D001, D002…) pour ne pas trouer la série des factures.
+  Les lignes déjà au facturier — les loyers repris de l'Excel — se rattachent à un
+  modèle sans être renumérotées, via « Rattacher ».
 </p>
 
 @if (result(); as generation) {
@@ -134,6 +136,7 @@
           <td>{{ e.active ? 'Actif' : 'Arrêté' }}</td>
           <td class="actions" (dblclick)="$event.stopPropagation()">
             <a class="btn btn-sm" [routerLink]="['/recurring', e.id, 'edit']">Modifier</a>
+            <a class="btn btn-sm btn-secondary" [routerLink]="['/recurring', e.id, 'attach']">Rattacher</a>
             @if (e.deletable) {
               <button class="btn btn-sm btn-danger" (click)="deleteExpense(e)">Supprimer</button>
             }

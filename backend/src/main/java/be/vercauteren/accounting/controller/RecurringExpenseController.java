@@ -1,5 +1,8 @@
 package be.vercauteren.accounting.controller;
 
+import be.vercauteren.accounting.dto.AttachableInvoice;
+import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.dto.RecurringAttachRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseResponse;
 import be.vercauteren.accounting.dto.RecurringGenerationRequest;
@@ -66,6 +69,33 @@ public class RecurringExpenseController {
     public List<RecurringOccurrence> findDue(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate upTo) {
         return recurringExpenseService.findDue(upTo);
+    }
+
+    /** Les lignes du facturier deja rattachees a ce modele. */
+    @GetMapping("/{id}/entries")
+    public List<InvoiceResponse> findEntries(@PathVariable Long id) {
+        return recurringExpenseService.findEntries(id);
+    }
+
+    /** Lignes du meme fournisseur, sans document, encore rattachables. */
+    @GetMapping("/{id}/attachable")
+    public List<AttachableInvoice> findAttachable(@PathVariable Long id) {
+        return recurringExpenseService.findAttachable(id);
+    }
+
+    /**
+     * Rattache une ligne existante — un loyer repris de l'Excel — a ce modele,
+     * pour la periode indiquee. Son numero et son annee ne changent pas.
+     */
+    @PostMapping("/{id}/attach")
+    public InvoiceResponse attach(@PathVariable Long id,
+                                   @Valid @RequestBody RecurringAttachRequest request) {
+        return recurringExpenseService.attach(id, request);
+    }
+
+    @DeleteMapping("/entries/{invoiceId}")
+    public InvoiceResponse detach(@PathVariable Long invoiceId) {
+        return recurringExpenseService.detach(invoiceId);
     }
 
     @PostMapping("/generate")

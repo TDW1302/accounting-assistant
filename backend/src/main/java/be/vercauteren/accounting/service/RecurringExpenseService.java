@@ -1,7 +1,9 @@
 package be.vercauteren.accounting.service;
 
+import be.vercauteren.accounting.dto.AttachableInvoice;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.dto.RecurringAttachRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseResponse;
 import be.vercauteren.accounting.dto.RecurringGenerationRequest;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,7 @@ public class RecurringExpenseService {
     private final SupplierService supplierService;
     private final InvoiceService invoiceService;
     private final AuthService authService;
+    private final FileNameGenerator fileNameGenerator;
 
     public List<RecurringExpenseResponse> findAll() {
         return recurringExpenseRepository.findAllOrderByActiveThenLabel().stream()
@@ -225,10 +229,7 @@ public class RecurringExpenseService {
 
     /** Echeances dues au {@code horizon} dont la periode n'est pas deja inscrite. */
     private List<RecurringOccurrence> pendingOccurrences(RecurringExpense expense, LocalDate horizon) {
-        Set<LocalDate> generated = invoiceRepository
-            .findByRecurringExpenseIdOrderByScopeDateAsc(expense.getId()).stream()
-            .map(Invoice::getScopeDate)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<LocalDate> generated = linkedPeriods(expense);
 
         List<RecurringOccurrence> pending = new ArrayList<>();
         List<LocalDate> due = RecurringSchedule.dueDates(
@@ -250,6 +251,125 @@ public class RecurringExpenseService {
             ));
         }
         return pending;
+    }
+
+    /** Les lignes du facturier qui couvrent une periode de ce modele. */
+    public List<InvoiceResponse> findEntries(Long id) {
+        getOrThrow(id);
+        return invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(id).stream()
+            .map(invoiceService::toLinkedResponse)
+            .toList();
+    }
+
+    /**
+     * Les lignes du meme fournisseur, sans document, qu'on peut encore rattacher.
+     * Chacune vient avec la periode que sa date de reception designe: pour un
+     * loyer repris de l'Excel, c'est presque toujours la bonne, et le client
+     * n'a plus qu'a confirmer.
+     */
+    public List<AttachableInvoice> findAttachable(Long id) {
+        RecurringExpense expense = getOrThrow(id);
+        Set<LocalDate> taken = linkedPeriods(expense);
+
+        return invoiceRepository
+            .findBySupplierIdAndFilePathIsNullAndRecurringExpenseIsNullOrderByYearDescNumberDesc(
+                expense.getSupplier().getId())
+            .stream()
+            .map(invoice -> toAttachable(expense, invoice, taken))
+            .toList();
+    }
+
+    private AttachableInvoice toAttachable(RecurringExpense expense, Invoice invoice, Set<LocalDate> taken) {
+        LocalDate suggested = RecurringSchedule.periodStart(
+            expense.getPeriodicity(), invoice.getReceptionDate());
+        boolean withinModel = RecurringSchedule
+            .dueDateFor(expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), suggested)
+            .isPresent();
+
+        String issue = null;
+        if (!withinModel) {
+            issue = "Hors des periodes du modele";
+        } else if (taken.contains(suggested)) {
+            issue = "Periode deja couverte";
+        }
+
+        return new AttachableInvoice(
+            invoice.getId(),
+            fileNameGenerator.formatNumber(invoice),
+            invoice.getYear(),
+            invoice.getReceptionDate(),
+            invoice.getAmountIncVat(),
+            invoice.getComment(),
+            suggested,
+            RecurringSchedule.periodLabel(expense.getPeriodicity(), suggested),
+            issue == null,
+            issue
+        );
+    }
+
+    /**
+     * Rattache une ligne existante. Ni le numero ni l'annee ne bougent: la ligne
+     * reste ou l'historique l'a mise. Seule la periode couverte est inscrite,
+     * puisque c'est elle qui dit au modele que ce mois-la est deja au facturier.
+     */
+    @Transactional
+    public InvoiceResponse attach(Long id, RecurringAttachRequest request) {
+        RecurringExpense expense = getOrThrow(id);
+        Invoice invoice = invoiceService.getForRecurringLink(request.invoiceId());
+
+        if (invoice.getRecurringExpense() != null) {
+            throw new IllegalArgumentException("This entry is already linked to a recurring expense");
+        }
+        if (invoice.getFilePath() != null) {
+            throw new IllegalArgumentException(
+                "Cannot link an entry that already carries a document: linking sets its period, "
+                    + "which would rename the stored file");
+        }
+        if (!invoice.getSupplier().getId().equals(expense.getSupplier().getId())) {
+            throw new IllegalArgumentException(
+                "The entry and the recurring expense must share the same supplier");
+        }
+
+        Optional<LocalDate> dueDate = RecurringSchedule.dueDateFor(
+            expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), request.periodStart());
+        if (dueDate.isEmpty()) {
+            throw new IllegalArgumentException(
+                "The requested period is not one of this recurring expense's periods");
+        }
+        if (linkedPeriods(expense).contains(request.periodStart())) {
+            throw new IllegalArgumentException("This period is already covered by another entry");
+        }
+
+        invoice.setRecurringExpense(expense);
+        invoice.setDateScope(expense.getPeriodicity().toDateScope());
+        invoice.setScopeDate(request.periodStart());
+
+        log.info("Linked invoice {} to recurring expense '{}' for period {}",
+            invoice.getId(), expense.getLabel(), request.periodStart());
+
+        return invoiceService.saveLinked(invoice);
+    }
+
+    /**
+     * Detache une ligne. La portee de date posee au rattachement reste: elle dit
+     * toujours quelle periode la ligne couvre, et la valeur d'avant n'est plus
+     * connue — l'inventer serait pire que la garder.
+     */
+    @Transactional
+    public InvoiceResponse detach(Long invoiceId) {
+        Invoice invoice = invoiceService.getForRecurringLink(invoiceId);
+        if (invoice.getRecurringExpense() == null) {
+            throw new IllegalArgumentException("This entry is not linked to a recurring expense");
+        }
+        invoice.setRecurringExpense(null);
+        return invoiceService.saveLinked(invoice);
+    }
+
+    /** Les periodes deja couvertes par une ligne du facturier, engendree ou rattachee. */
+    private Set<LocalDate> linkedPeriods(RecurringExpense expense) {
+        return invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(expense.getId()).stream()
+            .map(Invoice::getScopeDate)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void validatePeriod(RecurringExpenseRequest request) {

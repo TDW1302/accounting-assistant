@@ -74,4 +74,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     boolean existsByRecurringExpenseId(Long recurringExpenseId);
 
     boolean existsBySupplierIdAndSeries(Long supplierId, InvoiceSeries series);
+
+    /**
+     * Lignes rattachables a un modele recurrent: meme fournisseur, sans document
+     * et pas deja rattachees. Le document exclut, parce que rattacher fixe la
+     * portee de date, donc le nom de fichier: une ligne qui en a un serait a
+     * renommer, ce que le rattachement n'a pas a faire.
+     */
+    List<Invoice> findBySupplierIdAndFilePathIsNullAndRecurringExpenseIsNullOrderByYearDescNumberDesc(
+        Long supplierId);
 }

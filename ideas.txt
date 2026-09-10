@@ -62,8 +62,13 @@
 - Own numbering series (D001, D002...) so the documented series stays gap-free
 - Templates + on-demand generation; nothing is created without an explicit action
 - Excluded from "missing documents"; supplier stays mandatory (it carries the category)
+- Existing documentless rows can be linked to a template without renumbering: their
+  number is the accounting record of a past year, only the covered period is written
 - Not deferred: automatic scheduled generation (indexation and ended contracts would
   silently produce wrong rows), and a supplier-free expense (no category, no alias)
+- Still open: a plain "no document expected" flag for a one-off documentless row that
+  belongs to no template (a fine, registry fees) — today only a recurring link or the
+  EXPENSE series takes a row out of "missing documents"
 
 ## v1 scope (implemented)
 - Invoice CRUD replacing Excel

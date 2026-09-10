@@ -16,6 +16,7 @@ Personal accounting app replacing an Excel file for managing purchase/sale invoi
 - Purchases and sales share a single sequential numbering per year (restarts at 1)
 - Two numbering series, each with its own yearly counter: `INVOICE` (documented invoices, 001…) and `EXPENSE` (contractual expenses with no document, D001…). A row's series is fixed at creation.
 - Recurring expenses (rent, bank fees, PLCI) are templates; their instalments are only written to the ledger when the user generates them — never automatically
+- An existing documentless row (an Excel-imported rent) can be linked to a template without being renumbered: linking only records the period it covers. Any series may carry the link; `scope_date` is what identifies an instalment.
 - DTOs are Java records; entity↔DTO mapping via `toResponse()` in Service
 - Frontend: standalone components, signals, lazy-loaded routes, locale `fr-BE`
 - No Spring profiles currently; session/cookie auth with CSRF (XSRF-TOKEN)

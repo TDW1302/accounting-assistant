@@ -395,6 +395,27 @@ public class InvoiceService {
         }
     }
 
+    /**
+     * Acces reserve au rattachement d'une ligne a un modele recurrent. La regle
+     * d'auteur s'applique comme partout ailleurs: les lignes reprises de l'Excel
+     * n'en ont pas, seul un administrateur peut donc les rattacher.
+     */
+    Invoice getForRecurringLink(Long id) {
+        Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
+        return invoice;
+    }
+
+    /** Vue d'une ligne rattachee, pour les ecrans du modele recurrent. */
+    InvoiceResponse toLinkedResponse(Invoice invoice) {
+        return toResponse(invoice);
+    }
+
+    /** Enregistre une ligne dont seul le lien recurrent vient de changer. */
+    InvoiceResponse saveLinked(Invoice invoice) {
+        return toResponse(invoiceRepository.save(invoice));
+    }
+
     private Invoice getOrThrow(Long id) {
         return invoiceRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found: " + id));

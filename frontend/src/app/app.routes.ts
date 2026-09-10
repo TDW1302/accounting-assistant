@@ -46,6 +46,11 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
   },
   {
+    path: 'recurring/:id/attach',
+    loadComponent: () => import('./recurring/recurring-attach/recurring-attach').then(m => m.RecurringAttach),
+    canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
+  },
+  {
     path: 'recurring/:id/edit',
     loadComponent: () => import('./recurring/recurring-form/recurring-form').then(m => m.RecurringForm),
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
