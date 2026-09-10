@@ -42,6 +42,26 @@ jobs:
           path: backend/build/reports/tests/test/
           retention-days: 7
 
+  # Le seul endroit ou ng test tourne. L'etage frontend-build ne fait que npm ci puis
+  # ng build: sans ce job, une montee de version du runner de test ressortait verte sans
+  # qu'un seul test frontend ait ete execute — le meme faux vert que la PR node 24 -> 26.
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --watch=false
+
   # Publie le graphe complet des dependances Gradle, transitives comprises, pour
   # que Dependabot puisse alerter dessus: build.gradle ne nomme que les directes,
   # et c'est dans les transitives (Tomcat, Jackson, okhttp...) que les CVE tombent.
@@ -69,7 +89,7 @@ jobs:
   # npm run build, dans l'etage frontend-build. Seule la publication au registre
   # est reservee a main.
   build:
-    needs: test
+    needs: [test, frontend-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
