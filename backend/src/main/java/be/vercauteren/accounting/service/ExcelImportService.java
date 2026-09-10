@@ -3,6 +3,7 @@ package be.vercauteren.accounting.service;
 import be.vercauteren.accounting.dto.ExcelImportResponse;
 import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.Supplier;
@@ -121,8 +122,10 @@ public class ExcelImportService {
 
                     // Check for duplicate
                     boolean duplicate = subNumber == null
-                            ? invoiceRepository.existsByYearAndNumberAndSubNumberIsNull(year, number)
-                            : invoiceRepository.existsByYearAndNumberAndSubNumber(year, number, subNumber);
+                            ? invoiceRepository.existsBySeriesAndYearAndNumberAndSubNumberIsNull(
+                                InvoiceSeries.INVOICE, year, number)
+                            : invoiceRepository.existsBySeriesAndYearAndNumberAndSubNumber(
+                                InvoiceSeries.INVOICE, year, number, subNumber);
                     if (duplicate) {
                         rowsSkipped++;
                         warnings.add(describe(year, r) + " : numero " + formatNumber(number, subNumber)
@@ -168,6 +171,7 @@ public class ExcelImportService {
                     Invoice invoice = Invoice.builder()
                             .number(number)
                             .subNumber(subNumber)
+                            .series(InvoiceSeries.INVOICE)
                             .year(year)
                             .type(type)
                             .supplier(supplier)

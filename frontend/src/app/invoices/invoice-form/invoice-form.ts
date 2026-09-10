@@ -5,7 +5,7 @@ import { switchMap } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier, SupplierRequest } from '../../models/supplier.model';
-import { InvoiceRequest, DATE_SCOPES, InvoiceType } from '../../models/invoice.model';
+import { InvoiceRequest, DATE_SCOPES, INVOICE_SERIES, InvoiceSeries, InvoiceType } from '../../models/invoice.model';
 import { DocumentScanner } from '../document-scanner/document-scanner';
 
 @Component({
@@ -47,6 +47,27 @@ export class InvoiceForm implements OnInit {
   ];
 
   readonly dateScopes = DATE_SCOPES;
+  readonly invoiceSeries = INVOICE_SERIES;
+
+  /**
+   * Une depense contractuelle n'a ni document ni canal d'arrivee: le formulaire
+   * masque ce qui n'a plus de sens plutot que de le laisser saisir pour rien.
+   */
+  isExpense(): boolean {
+    return this.form?.get('series')?.value === 'EXPENSE';
+  }
+
+  /** Une depense n'est pas recue: sa date est celle de l'echeance. */
+  receptionDateLabel(): string {
+    return this.isExpense() ? 'Date d\'échéance' : 'Date de réception';
+  }
+
+  onSeriesChange(): void {
+    if (this.isExpense()) {
+      this.selectedFile = null;
+      this.form.patchValue({ peppol: false });
+    }
+  }
 
   /** Les defauts du fournisseur (DKV mensuel, Vanbrada annuel, recu par Peppol...). */
   onSupplierChange(): void {
@@ -61,13 +82,16 @@ export class InvoiceForm implements OnInit {
     if (supplier.defaultDateScope) {
       this.form.patchValue({ dateScope: supplier.defaultDateScope });
     }
-    this.form.patchValue({ peppol: supplier.defaultPeppol });
+    // Le defaut Peppol du fournisseur ne s'applique qu'a un document recu:
+    // une depense contractuelle n'arrive par aucun canal.
+    this.form.patchValue({ peppol: !this.isExpense() && supplier.defaultPeppol });
   }
 
   ngOnInit(): void {
     this.form = this.fb.group({
       year: [new Date().getFullYear(), Validators.required],
       subNumber: [null],
+      series: ['INVOICE', Validators.required],
       type: ['PURCHASE', Validators.required],
       supplierId: [null, Validators.required],
       amountIncVat: [null],
@@ -87,8 +111,10 @@ export class InvoiceForm implements OnInit {
     const yearParam = this.route.snapshot.queryParamMap.get('year');
     if (linkTo && yearParam) {
       this.linkToNumber = +linkTo;
-      this.form.patchValue({ year: +yearParam });
+      // Une sous-facture appartient toujours a la serie documentee.
+      this.form.patchValue({ year: +yearParam, series: 'INVOICE' });
       this.form.get('year')!.disable();
+      this.form.get('series')!.disable();
     }
 
     this.supplierService.list().subscribe(s => this.suppliers.set(s));
@@ -99,9 +125,13 @@ export class InvoiceForm implements OnInit {
       this.invoiceId = +id;
       this.invoiceService.get(this.invoiceId).subscribe(inv => {
         this.existingFilePath = inv.filePath;
+        // La serie porte le compteur du numero deja attribue: le serveur refuse
+        // qu'elle change, le formulaire la fige.
+        this.form.get('series')!.disable();
         this.form.patchValue({
           year: inv.year,
           subNumber: inv.subNumber,
+          series: inv.series,
           type: inv.type,
           supplierId: inv.supplier.id,
           amountIncVat: inv.amountIncVat,
@@ -232,6 +262,7 @@ export class InvoiceForm implements OnInit {
       amountIncVat: raw.amountIncVat != null ? +raw.amountIncVat : null,
       amountExVat: raw.amountExVat != null ? +raw.amountExVat : null,
       vatAmount: raw.vatAmount != null ? +raw.vatAmount : null,
+      series: raw.series as InvoiceSeries,
       paymentDate: raw.paymentDate || null,
       scopeDate: raw.scopeDate || null,
       comment: raw.comment || null,
@@ -243,7 +274,7 @@ export class InvoiceForm implements OnInit {
       ? this.invoiceService.update(this.invoiceId!, req)
       : this.invoiceService.create(req);
 
-    if (this.selectedFile) {
+    if (this.selectedFile && !this.isExpense()) {
       const file = this.selectedFile;
       op.pipe(
         switchMap(invoice => this.invoiceService.upload(invoice.id, file))

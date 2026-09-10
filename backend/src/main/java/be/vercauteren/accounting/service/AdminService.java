@@ -4,6 +4,7 @@ import be.vercauteren.accounting.dto.AdminStatsResponse;
 import be.vercauteren.accounting.dto.AdminYearSummary;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.repository.RecurringExpenseRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
 import java.io.IOException;
 import java.util.List;
@@ -19,6 +20,7 @@ public class AdminService {
 
     private final InvoiceRepository invoiceRepository;
     private final SupplierRepository supplierRepository;
+    private final RecurringExpenseRepository recurringExpenseRepository;
     private final FileStorageService fileStorageService;
 
     public AdminStatsResponse getStats() {
@@ -52,6 +54,12 @@ public class AdminService {
     public void deleteAllSuppliers() {
         if (invoiceRepository.count() > 0) {
             throw new IllegalStateException("Cannot delete suppliers while invoices still exist");
+        }
+        // Les modeles recurrents referencent aussi un fournisseur, et survivent a
+        // la suppression des factures: sans ce controle, la purge casse sur la
+        // contrainte de cle etrangere.
+        if (recurringExpenseRepository.count() > 0) {
+            throw new IllegalStateException("Cannot delete suppliers while recurring expenses still exist");
         }
         supplierRepository.deleteAll();
     }

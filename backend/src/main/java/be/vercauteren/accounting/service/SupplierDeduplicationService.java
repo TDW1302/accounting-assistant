@@ -4,7 +4,9 @@ import be.vercauteren.accounting.dto.SupplierDuplicatesResponse;
 import be.vercauteren.accounting.dto.SupplierMergeResponse;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.entity.RecurringExpense;
 import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.repository.RecurringExpenseRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
 import be.vercauteren.accounting.util.NameSimilarity;
 import be.vercauteren.accounting.util.VatUtils;
@@ -32,6 +34,7 @@ public class SupplierDeduplicationService {
 
     private final SupplierRepository supplierRepository;
     private final InvoiceRepository invoiceRepository;
+    private final RecurringExpenseRepository recurringExpenseRepository;
 
     /**
      * Couples de fiches susceptibles de designer la meme societe.
@@ -98,6 +101,14 @@ public class SupplierDeduplicationService {
         }
         invoiceRepository.saveAll(invoices);
 
+        // Les modeles de depenses recurrentes pointent eux aussi vers un fournisseur:
+        // les oublier ferait echouer la suppression de la fiche absorbee.
+        List<RecurringExpense> recurring = recurringExpenseRepository.findBySupplierId(removeId);
+        for (RecurringExpense expense : recurring) {
+            expense.setSupplier(keep);
+        }
+        recurringExpenseRepository.saveAll(recurring);
+
         List<String> fieldsFilled = new ArrayList<>();
         if (isBlank(keep.getAlias()) && !isBlank(remove.getAlias())) {
             keep.setAlias(remove.getAlias());
@@ -121,10 +132,11 @@ public class SupplierDeduplicationService {
         // commit: la suppression doit attendre, sinon la contrainte de cle etrangere
         // porte encore sur l'ancienne fiche.
         supplierRepository.flush();
+        recurringExpenseRepository.flush();
         supplierRepository.delete(remove);
 
-        log.info("Merged supplier '{}' ({}) into '{}' ({}): {} invoices reassigned",
-            remove.getName(), removeId, keep.getName(), keepId, invoices.size());
+        log.info("Merged supplier '{}' ({}) into '{}' ({}): {} invoices and {} recurring expenses reassigned",
+            remove.getName(), removeId, keep.getName(), keepId, invoices.size(), recurring.size());
 
         return new SupplierMergeResponse(
             keep.getId(), keep.getName(), remove.getName(), invoices.size(), fieldsFilled);

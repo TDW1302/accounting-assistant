@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.entity.DateScope;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.InvoiceType;
 import be.vercauteren.accounting.entity.User;
@@ -48,7 +49,7 @@ class InvoiceAuthorTest {
 
     private static InvoiceRequest request() {
         return new InvoiceRequest(
-            null, 2026, InvoiceType.PURCHASE, 1L, null, null, null,
+            null, InvoiceSeries.INVOICE, 2026, InvoiceType.PURCHASE, 1L, null, null, null,
             LocalDate.of(2026, 1, 1), null, false, null, DateScope.NONE,
             null, null, null, null);
     }

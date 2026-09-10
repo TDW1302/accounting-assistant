@@ -2,20 +2,32 @@ package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.entity.DateScope;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import java.time.LocalDate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FileNameGenerator {
 
-    public String generate(Invoice invoice) {
+    /**
+     * Numero mis en forme: 001, 008.1, et D003 pour les depenses contractuelles.
+     * Le prefixe rend la serie lisible a l'oeil, la ou la seule difference en base
+     * est une colonne.
+     */
+    public String formatNumber(Invoice invoice) {
         StringBuilder sb = new StringBuilder();
-
-        // Number: 001, 008.1
+        if (invoice.getSeries() == InvoiceSeries.EXPENSE) {
+            sb.append("D");
+        }
         sb.append(String.format("%03d", invoice.getNumber()));
         if (invoice.getSubNumber() != null) {
             sb.append(".").append(invoice.getSubNumber());
         }
+        return sb.toString();
+    }
+
+    public String generate(Invoice invoice) {
+        StringBuilder sb = new StringBuilder(formatNumber(invoice));
 
         // Date scope
         String datePart = formatScopeDate(invoice.getDateScope(), invoice.getScopeDate());

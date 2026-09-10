@@ -4,6 +4,7 @@ import be.vercauteren.accounting.dto.InboxScanResult;
 import be.vercauteren.accounting.dto.InvoiceExtractionResult;
 import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.repository.InvoiceRepository;
@@ -149,6 +150,7 @@ public class InboxService {
             int year = receptionDate.getYear();
             InvoiceRequest request = new InvoiceRequest(
                 null,
+                InvoiceSeries.INVOICE,
                 year,
                 extraction.type() != null ? extraction.type() : be.vercauteren.accounting.entity.InvoiceType.PURCHASE,
                 extraction.supplierId(),
@@ -198,7 +200,8 @@ public class InboxService {
      * ici, et creer un doublon serait pire que de le rattacher.
      */
     private Optional<Invoice> findMatch(Long supplierId, BigDecimal amountIncVat, LocalDate documentDate) {
-        List<Invoice> candidates = invoiceRepository.findBySupplierIdAndFilePathIsNull(supplierId);
+        List<Invoice> candidates = invoiceRepository.findBySupplierIdAndSeriesAndFilePathIsNull(
+            supplierId, InvoiceSeries.INVOICE);
 
         if (amountIncVat != null) {
             Optional<Invoice> byAmount = candidates.stream()

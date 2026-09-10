@@ -7,6 +7,7 @@ import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.dto.PeppolDocumentResponse;
 import be.vercauteren.accounting.dto.PeppolImportRequest;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.InvoiceSource;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
@@ -78,6 +79,7 @@ public class PeppolService {
 
         InvoiceRequest invoiceRequest = new InvoiceRequest(
             null,
+            InvoiceSeries.INVOICE,
             request.year(),
             request.type(),
             request.supplierId(),

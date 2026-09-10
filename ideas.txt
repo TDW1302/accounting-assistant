@@ -57,6 +57,14 @@
 - Before 2026: \\NAS\homes\VITe\{year}\Done\
 - Since 2026: \\NAS\homes\VITe\{year}\
 
+## Recurring expenses (implemented)
+- Contractual expenses with no invoice: rent, bank fees, PLCI
+- Own numbering series (D001, D002...) so the documented series stays gap-free
+- Templates + on-demand generation; nothing is created without an explicit action
+- Excluded from "missing documents"; supplier stays mandatory (it carries the category)
+- Not deferred: automatic scheduled generation (indexation and ended contracts would
+  silently produce wrong rows), and a supplier-free expense (no category, no alias)
+
 ## v1 scope (implemented)
 - Invoice CRUD replacing Excel
 - PDF file renaming + upload with year-based storage

@@ -14,6 +14,8 @@ Personal accounting app replacing an Excel file for managing purchase/sale invoi
 - Currency: always EUR
 - Invoice type determines party role (PURCHASE/SALE), not the party itself
 - Purchases and sales share a single sequential numbering per year (restarts at 1)
+- Two numbering series, each with its own yearly counter: `INVOICE` (documented invoices, 001…) and `EXPENSE` (contractual expenses with no document, D001…). A row's series is fixed at creation.
+- Recurring expenses (rent, bank fees, PLCI) are templates; their instalments are only written to the ledger when the user generates them — never automatically
 - DTOs are Java records; entity↔DTO mapping via `toResponse()` in Service
 - Frontend: standalone components, signals, lazy-loaded routes, locale `fr-BE`
 - No Spring profiles currently; session/cookie auth with CSRF (XSRF-TOKEN)

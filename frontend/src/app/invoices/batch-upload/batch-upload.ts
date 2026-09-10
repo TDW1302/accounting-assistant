@@ -308,6 +308,8 @@ export class BatchUpload implements OnInit {
 
     const req: InvoiceRequest = {
       subNumber: null,
+      // L'upload multiple ne traite que des documents.
+      series: 'INVOICE',
       year: item.year,
       type: item.type,
       supplierId: item.supplierId!,

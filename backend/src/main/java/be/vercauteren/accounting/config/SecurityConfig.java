@@ -69,10 +69,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/inbox/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/peppol/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/peppol/**").hasAnyRole("ADMIN", "USER")
-                .requestMatchers(HttpMethod.GET, "/api/invoices/**", "/api/suppliers/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/invoices/**", "/api/suppliers/**").hasAnyRole("ADMIN", "USER")
-                .requestMatchers(HttpMethod.PUT, "/api/invoices/**", "/api/suppliers/**").hasAnyRole("ADMIN", "USER")
-                .requestMatchers(HttpMethod.DELETE, "/api/invoices/**", "/api/suppliers/**").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.GET, "/api/invoices/**", "/api/suppliers/**",
+                    "/api/recurring-expenses/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/invoices/**", "/api/suppliers/**",
+                    "/api/recurring-expenses/**").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.PUT, "/api/invoices/**", "/api/suppliers/**",
+                    "/api/recurring-expenses/**").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.DELETE, "/api/invoices/**", "/api/suppliers/**",
+                    "/api/recurring-expenses/**").hasAnyRole("ADMIN", "USER")
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers

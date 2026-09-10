@@ -13,6 +13,11 @@
       <option [ngValue]="'PURCHASE'">Achats</option>
       <option [ngValue]="'SALE'">Ventes</option>
     </select>
+    <select [ngModel]="seriesFilter()" (ngModelChange)="seriesFilter.set($event)">
+      <option [ngValue]="null">-- Factures et dépenses --</option>
+      <option [ngValue]="'INVOICE'">Factures</option>
+      <option [ngValue]="'EXPENSE'">Dépenses sans document</option>
+    </select>
     @if (searchActive) {
       <span class="badge-search">Recherche active</span>
       <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
@@ -142,7 +147,9 @@
         @if (searchActive) {
           <td>{{ inv.year }}</td>
         }
-        <td>{{ formatNumber(inv) }}</td>
+        <td [title]="inv.series === 'EXPENSE' ? 'Dépense contractuelle, aucun document attendu' : ''">
+          {{ formatNumber(inv) }}
+        </td>
         <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
         <td>{{ inv.supplier.name }}</td>
         <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
@@ -151,20 +158,28 @@
         <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
         <td>{{ inv.paymentDate | date:'dd/MM/yyyy' }}</td>
         <td>{{ inv.peppol ? 'V' : '' }}</td>
-        <td class="mono">{{ inv.generatedFileName }}</td>
-        <td>{{ inv.comment }}</td>
+        <td class="mono">
+          @if (inv.series === 'EXPENSE' && !inv.filePath) {
+            <span class="no-document">Sans document</span>
+          } @else {
+            {{ inv.generatedFileName }}
+          }
+        </td>
+        <td>@if (inv.recurringExpenseLabel) {<span class="recurring-label">{{ inv.recurringExpenseLabel }}</span>}{{ inv.recurringExpenseLabel && inv.comment ? ' — ' : '' }}{{ inv.comment }}</td>
         <td class="actions" (dblclick)="$event.stopPropagation()">
           <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
-          <a class="btn btn-sm btn-secondary" [routerLink]="['/invoices/new']"
-             [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
+          @if (inv.series === 'INVOICE') {
+            <a class="btn btn-sm btn-secondary" [routerLink]="['/invoices/new']"
+               [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
+          }
           <button class="btn btn-sm btn-danger" (click)="deleteInvoice(inv)">Supprimer</button>
         </td>
       </tr>
     } @empty {
       <tr>
         <td [attr.colspan]="searchActive ? 13 : 12" class="empty">
-          @if (typeFilter() !== null && invoices().length > 0) {
-            Aucune facture de ce type.
+          @if ((typeFilter() !== null || seriesFilter() !== null) && invoices().length > 0) {
+            Aucune ligne ne correspond à ces filtres.
           } @else if (searchActive) {
             Aucune facture trouvée pour cette recherche.
           } @else {
@@ -178,7 +193,7 @@
     <tfoot>
       <tr>
         <td [attr.colspan]="searchActive ? 4 : 3">
-          Total — {{ displayedInvoices().length }} facture(s)
+          Total — {{ displayedInvoices().length }} ligne(s)
         </td>
         <td class="text-right">{{ totals().incVat | currency:'EUR':'symbol':'1.2-2' }}</td>
         <td class="text-right">{{ totals().exVat | currency:'EUR':'symbol':'1.2-2' }}</td>

@@ -2,6 +2,7 @@ package be.vercauteren.accounting.service;
 
 import be.vercauteren.accounting.dto.FileAdoptionResponse;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.repository.InvoiceRepository;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -110,9 +111,13 @@ public class FileAdoptionService {
                 continue;
             }
 
+            // Seul le facturier documente est concerne: les numeros D001, D002...
+            // des depenses contractuelles ne nomment aucun fichier a rattacher.
             Optional<Invoice> found = key.subNumber() == null
-                ? invoiceRepository.findByYearAndNumberAndSubNumberIsNull(key.year(), key.number())
-                : invoiceRepository.findByYearAndNumberAndSubNumber(key.year(), key.number(), key.subNumber());
+                ? invoiceRepository.findBySeriesAndYearAndNumberAndSubNumberIsNull(
+                    InvoiceSeries.INVOICE, key.year(), key.number())
+                : invoiceRepository.findBySeriesAndYearAndNumberAndSubNumber(
+                    InvoiceSeries.INVOICE, key.year(), key.number(), key.subNumber());
 
             if (found.isEmpty()) {
                 withoutInvoice++;

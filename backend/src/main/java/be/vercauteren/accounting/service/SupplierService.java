@@ -5,6 +5,7 @@ import be.vercauteren.accounting.dto.SupplierResponse;
 import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.repository.RecurringExpenseRepository;
 import be.vercauteren.accounting.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -18,6 +19,7 @@ public class SupplierService {
 
     private final SupplierRepository supplierRepository;
     private final InvoiceRepository invoiceRepository;
+    private final RecurringExpenseRepository recurringExpenseRepository;
 
     public List<SupplierResponse> findAll() {
         return supplierRepository.findAllOrderByName().stream()
@@ -66,6 +68,10 @@ public class SupplierService {
         Supplier supplier = getOrThrow(id);
         if (invoiceRepository.existsBySupplierId(supplier.getId())) {
             throw new IllegalArgumentException("Cannot delete supplier: invoices reference this supplier");
+        }
+        if (recurringExpenseRepository.existsBySupplierId(supplier.getId())) {
+            throw new IllegalArgumentException(
+                "Cannot delete supplier: recurring expenses reference this supplier");
         }
         supplierRepository.delete(supplier);
     }

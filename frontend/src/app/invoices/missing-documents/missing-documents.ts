@@ -76,8 +76,8 @@ export class MissingDocuments implements OnInit {
     });
   }
 
+  /** Le serveur met deja le numero en forme: le refaire ici le ferait diverger. */
   formatNumber(inv: Invoice): string {
-    const num = String(inv.number).padStart(3, '0');
-    return inv.subNumber ? `${num}.${inv.subNumber}` : num;
+    return inv.displayNumber;
   }
 }

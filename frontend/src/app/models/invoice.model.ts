@@ -1,6 +1,18 @@
 import { ExpenseCategory, Supplier } from './supplier.model';
 
 export type InvoiceType = 'PURCHASE' | 'SALE';
+
+/**
+ * Série de numérotation. INVOICE est le facturier documenté (001, 002…),
+ * EXPENSE les dépenses contractuelles sans document (D001, D002…), qui ont
+ * leur propre compteur annuel.
+ */
+export type InvoiceSeries = 'INVOICE' | 'EXPENSE';
+
+export const INVOICE_SERIES: { value: InvoiceSeries; label: string }[] = [
+  { value: 'INVOICE', label: 'Facture (document attendu)' },
+  { value: 'EXPENSE', label: 'Dépense sans document' },
+];
 export type DateScope = 'DAILY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'NONE';
 
 export const DATE_SCOPES: { value: DateScope; label: string }[] = [
@@ -19,6 +31,9 @@ export interface Invoice {
   id: number;
   number: number;
   subNumber: number | null;
+  /** Numéro mis en forme par le serveur: "001", "008.1", "D003". */
+  displayNumber: string;
+  series: InvoiceSeries;
   year: number;
   type: InvoiceType;
   supplier: Supplier;
@@ -35,6 +50,8 @@ export interface Invoice {
   fileDetail: string | null;
   generatedFileName: string;
   falcoDocumentId: string | null;
+  recurringExpenseId: number | null;
+  recurringExpenseLabel: string | null;
 }
 
 export interface InvoiceExtractionResult {
@@ -77,6 +94,7 @@ export interface BatchInvoiceItem {
 
 export interface InvoiceRequest {
   subNumber: number | null;
+  series: InvoiceSeries;
   year: number;
   type: InvoiceType;
   supplierId: number;

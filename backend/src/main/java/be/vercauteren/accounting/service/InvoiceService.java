@@ -4,7 +4,9 @@ import be.vercauteren.accounting.dto.InvoiceRequest;
 import be.vercauteren.accounting.dto.InvoiceResponse;
 import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.InvoiceSource;
+import be.vercauteren.accounting.entity.RecurringExpense;
 import be.vercauteren.accounting.entity.Supplier;
 import be.vercauteren.accounting.entity.User;
 import be.vercauteren.accounting.entity.UserRole;
@@ -92,7 +94,11 @@ public class InvoiceService {
             .toList();
     }
 
-    /** Invoices whose document is still missing, optionally restricted to one year. */
+    /**
+     * Invoices whose document is still missing, optionally restricted to one year.
+     * Les depenses contractuelles en sont exclues par construction: leur absence
+     * de fichier n'est pas un oubli, c'est leur nature.
+     */
     public List<InvoiceResponse> findMissingDocuments(Integer year, boolean includePeppol) {
         Specification<Invoice> spec = InvoiceSpecification.missingDocument(includePeppol);
         if (year != null) {
@@ -133,6 +139,16 @@ public class InvoiceService {
      * planifie — et doivent donc nommer eux-memes l'auteur a inscrire.
      */
     public InvoiceResponse create(InvoiceRequest request, InvoiceSource source, User author) {
+        return create(request, source, author, null);
+    }
+
+    /**
+     * Variante pour les echeances engendrees depuis un modele recurrent: seule
+     * l'attribution du numero justifie de passer par ici, le reste vient du modele.
+     * Le lien vers celui-ci sert a ne pas creer deux fois la meme echeance.
+     */
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source, User author,
+                                   RecurringExpense recurringExpense) {
         Objects.requireNonNull(author, "author");
         Objects.requireNonNull(source, "source");
         TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
@@ -142,6 +158,10 @@ public class InvoiceService {
             try {
                 return txTemplate.execute(status -> {
                     Supplier supplier = supplierService.getOrThrow(request.supplierId());
+                    // Nul vaut le facturier documente: c'est tout ce que les appelants
+                    // anterieurs aux depenses contractuelles savent creer.
+                    InvoiceSeries series = request.series() != null
+                        ? request.series() : InvoiceSeries.INVOICE;
 
                     int assignedNumber;
                     Integer assignedSubNumber;
@@ -149,8 +169,8 @@ public class InvoiceService {
                     if (request.linkToNumber() != null) {
                         // Sub-invoice mode
                         assignedNumber = request.linkToNumber();
-                        List<Invoice> siblings = invoiceRepository.findByYearAndNumberOrderBySubNumberAsc(
-                            request.year(), assignedNumber);
+                        List<Invoice> siblings = invoiceRepository.findBySeriesAndYearAndNumberOrderBySubNumberAsc(
+                            series, request.year(), assignedNumber);
 
                         if (siblings.isEmpty()) {
                             throw new EntityNotFoundException(
@@ -178,14 +198,15 @@ public class InvoiceService {
                         }
 
                         // Determine next sub-number with lock
-                        int maxSub = invoiceRepository.findFirstByYearAndNumberOrderBySubNumberDesc(
-                                request.year(), assignedNumber)
+                        int maxSub = invoiceRepository.findFirstBySeriesAndYearAndNumberOrderBySubNumberDesc(
+                                series, request.year(), assignedNumber)
                             .map(inv -> inv.getSubNumber() != null ? inv.getSubNumber() : 1)
                             .orElse(1);
                         assignedSubNumber = maxSub + 1;
                     } else {
                         // Normal mode: auto-increment number
-                        assignedNumber = invoiceRepository.findFirstByYearOrderByNumberDesc(request.year())
+                        assignedNumber = invoiceRepository.findFirstBySeriesAndYearOrderByNumberDesc(
+                                series, request.year())
                             .map(inv -> inv.getNumber() + 1)
                             .orElse(1);
                         assignedSubNumber = null;
@@ -194,6 +215,7 @@ public class InvoiceService {
                     Invoice invoice = Invoice.builder()
                         .number(assignedNumber)
                         .subNumber(assignedSubNumber)
+                        .series(series)
                         .year(request.year())
                         .type(request.type())
                         .supplier(supplier)
@@ -202,7 +224,9 @@ public class InvoiceService {
                         .vatAmount(request.vatAmount())
                         .receptionDate(request.receptionDate())
                         .paymentDate(request.paymentDate())
-                        .peppol(request.peppol())
+                        // Une depense contractuelle n'arrive par aucun canal:
+                        // la cocher Peppol l'ecarterait a tort du suivi des documents.
+                        .peppol(series == InvoiceSeries.INVOICE && Boolean.TRUE.equals(request.peppol()))
                         .comment(request.comment())
                         .filePath(null)
                         .dateScope(request.dateScope())
@@ -211,6 +235,7 @@ public class InvoiceService {
                         .falcoDocumentId(request.falcoDocumentId())
                         .createdBy(author)
                         .source(source)
+                        .recurringExpense(recurringExpense)
                         .build();
 
                     return toResponse(invoiceRepository.save(invoice));
@@ -235,6 +260,19 @@ public class InvoiceService {
             throw new IllegalArgumentException("Cannot change invoice year. Delete and recreate the invoice instead.");
         }
 
+        if (request.series() != null && invoice.getSeries() != request.series()) {
+            throw new IllegalArgumentException(
+                "Cannot change the series of an invoice. Delete and recreate it instead.");
+        }
+
+        // Une echeance est identifiee par la periode qu'elle couvre: la vider
+        // rendrait le modele incapable de savoir qu'elle existe, et la contrainte
+        // ck_invoice_recurring_is_expense la refuserait de toute facon.
+        if (invoice.getRecurringExpense() != null && request.scopeDate() == null) {
+            throw new IllegalArgumentException(
+                "Cannot clear the period of an entry generated from a recurring expense.");
+        }
+
         if (invoice.getSubNumber() != null && request.subNumber() != null
                 && !invoice.getSubNumber().equals(request.subNumber())) {
             throw new IllegalArgumentException("Cannot change sub-number of a sub-invoice.");
@@ -246,7 +284,7 @@ public class InvoiceService {
         invoice.setVatAmount(request.vatAmount());
         invoice.setReceptionDate(request.receptionDate());
         invoice.setPaymentDate(request.paymentDate());
-        invoice.setPeppol(request.peppol());
+        invoice.setPeppol(invoice.expectsDocument() && Boolean.TRUE.equals(request.peppol()));
         invoice.setComment(request.comment());
         invoice.setDateScope(request.dateScope());
         invoice.setScopeDate(request.scopeDate());
@@ -367,6 +405,8 @@ public class InvoiceService {
             invoice.getId(),
             invoice.getNumber(),
             invoice.getSubNumber(),
+            fileNameGenerator.formatNumber(invoice),
+            invoice.getSeries(),
             invoice.getYear(),
             invoice.getType(),
             supplierService.toResponse(invoice.getSupplier()),
@@ -382,7 +422,9 @@ public class InvoiceService {
             invoice.getScopeDate(),
             invoice.getFileDetail(),
             fileNameGenerator.generate(invoice),
-            invoice.getFalcoDocumentId()
+            invoice.getFalcoDocumentId(),
+            invoice.getRecurringExpense() != null ? invoice.getRecurringExpense().getId() : null,
+            invoice.getRecurringExpense() != null ? invoice.getRecurringExpense().getLabel() : null
         );
     }
 }

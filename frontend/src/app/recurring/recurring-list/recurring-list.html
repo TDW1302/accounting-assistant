@@ -1,0 +1,150 @@
+<div class="page-header">
+  <h1>Dépenses récurrentes</h1>
+  <div class="header-actions">
+    @if (authService.hasRole('ADMIN') || authService.hasRole('USER')) {
+      <a class="btn btn-primary" routerLink="/recurring/new">+ Nouvelle dépense récurrente</a>
+    }
+  </div>
+</div>
+
+<p class="hint">
+  Dépenses contractuelles sans facture — loyer, frais bancaires, PLCI. Aucun document
+  n'est attendu : elles n'apparaissent pas dans « Documents manquants » et sont
+  numérotées à part (D001, D002…) pour ne pas trouer la série des factures.
+</p>
+
+@if (result(); as generation) {
+  <div class="import-result">
+    <strong>Génération terminée :</strong>
+    {{ generation.created.length }} échéance(s) inscrite(s)
+    @if (generation.created.length > 0) {
+      ({{ generation.created[0].displayNumber }}@if (generation.created.length > 1) {
+        <span> … {{ generation.created[generation.created.length - 1].displayNumber }}</span>
+      })
+    }
+    @if (generation.skipped.length > 0) {
+      <ul>
+        @for (s of generation.skipped; track s) {
+          <li>{{ s }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="result.set(null)">Fermer</button>
+  </div>
+}
+
+<section class="due-section">
+  <div class="section-header">
+    <h2>Échéances à inscrire</h2>
+    <div class="section-actions">
+      <label class="up-to">
+        Échues au
+        <input type="date" [(ngModel)]="upTo" (ngModelChange)="loadDue()">
+      </label>
+      <button class="btn btn-primary" (click)="generate()"
+              [disabled]="generating() || selectedCount() === 0">
+        {{ generating() ? 'Génération...' : 'Inscrire au facturier (' + selectedCount() + ')' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th class="check-col">
+          <input type="checkbox" [checked]="allSelected()" (change)="toggleAll()"
+                 [disabled]="occurrences().length === 0" aria-label="Tout sélectionner">
+        </th>
+        <th>Dépense</th>
+        <th>Fournisseur</th>
+        <th>Période</th>
+        <th>Échéance</th>
+        <th class="text-right">TTC</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (o of occurrences(); track key(o)) {
+        <tr (click)="toggle(o)" class="row-detail" title="Cliquez pour (dé)sélectionner">
+          <td class="check-col">
+            <input type="checkbox" [checked]="isSelected(o)" (click)="$event.stopPropagation()"
+                   (change)="toggle(o)" [attr.aria-label]="o.label + ' ' + o.periodLabel">
+          </td>
+          <td>{{ o.label }}</td>
+          <td>{{ o.supplierName }}</td>
+          <td class="mono">{{ o.periodLabel }}</td>
+          <td>{{ o.dueDate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-right">{{ o.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty">Aucune échéance en attente à cette date.</td>
+        </tr>
+      }
+    </tbody>
+    @if (occurrences().length > 0) {
+      <tfoot>
+        <tr>
+          <td colspan="5">Total sélectionné — {{ selectedCount() }} échéance(s)</td>
+          <td class="text-right">{{ selectedTotal() | currency:'EUR':'symbol':'1.2-2' }}</td>
+        </tr>
+      </tfoot>
+    }
+  </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-header">
+    <h2>Modèles</h2>
+  </div>
+
+  <div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Libellé</th>
+        <th>Fournisseur</th>
+        <th class="text-right">TTC</th>
+        <th>Rythme</th>
+        <th>Début</th>
+        <th>Fin</th>
+        <th class="text-right">Inscrites</th>
+        <th class="text-right">En attente</th>
+        <th>État</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (e of expenses(); track e.id) {
+        <tr class="row-detail" [class.inactive-row]="!e.active"
+            (dblclick)="openExpense(e)" title="Double-cliquez pour ouvrir le modèle">
+          <td>{{ e.label }}</td>
+          <td>{{ e.supplier.name }}</td>
+          <td class="text-right">{{ e.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+          <td>{{ periodicityLabel(e.periodicity) }}</td>
+          <td>{{ e.startDate | date:'dd/MM/yyyy' }}</td>
+          <td>{{ e.endDate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-right">{{ e.generatedCount }}</td>
+          <td class="text-right">
+            @if (e.pendingCount > 0) {
+              <span class="badge-pending">{{ e.pendingCount }}</span>
+            }
+          </td>
+          <td>{{ e.active ? 'Actif' : 'Arrêté' }}</td>
+          <td class="actions" (dblclick)="$event.stopPropagation()">
+            <a class="btn btn-sm" [routerLink]="['/recurring', e.id, 'edit']">Modifier</a>
+            @if (e.deletable) {
+              <button class="btn btn-sm btn-danger" (click)="deleteExpense(e)">Supprimer</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="10" class="empty">Aucune dépense récurrente.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  </div>
+</section>

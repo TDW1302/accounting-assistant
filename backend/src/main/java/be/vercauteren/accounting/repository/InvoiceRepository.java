@@ -1,6 +1,7 @@
 package be.vercauteren.accounting.repository;
 
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,13 +20,16 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
 
     long countByYear(Integer year);
 
+    /** Chaque serie a son propre compteur annuel: 001 et D001 coexistent. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Invoice> findFirstByYearOrderByNumberDesc(Integer year);
+    Optional<Invoice> findFirstBySeriesAndYearOrderByNumberDesc(InvoiceSeries series, Integer year);
 
-    List<Invoice> findByYearAndNumberOrderBySubNumberAsc(Integer year, Integer number);
+    List<Invoice> findBySeriesAndYearAndNumberOrderBySubNumberAsc(
+        InvoiceSeries series, Integer year, Integer number);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Invoice> findFirstByYearAndNumberOrderBySubNumberDesc(Integer year, Integer number);
+    Optional<Invoice> findFirstBySeriesAndYearAndNumberOrderBySubNumberDesc(
+        InvoiceSeries series, Integer year, Integer number);
 
     boolean existsByFalcoDocumentId(String falcoDocumentId);
 
@@ -33,18 +37,29 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
 
     boolean existsBySupplierId(Long supplierId);
 
-    boolean existsByYearAndNumberAndSubNumberIsNull(Integer year, Integer number);
+    // Rapprochement par numero de fichier et reprise de l'Excel: les deux ne
+    // portent que sur le facturier documente, d'ou la serie explicite.
 
-    boolean existsByYearAndNumberAndSubNumber(Integer year, Integer number, Integer subNumber);
+    boolean existsBySeriesAndYearAndNumberAndSubNumberIsNull(
+        InvoiceSeries series, Integer year, Integer number);
 
-    Optional<Invoice> findByYearAndNumberAndSubNumberIsNull(Integer year, Integer number);
+    boolean existsBySeriesAndYearAndNumberAndSubNumber(
+        InvoiceSeries series, Integer year, Integer number, Integer subNumber);
 
-    Optional<Invoice> findByYearAndNumberAndSubNumber(Integer year, Integer number, Integer subNumber);
+    Optional<Invoice> findBySeriesAndYearAndNumberAndSubNumberIsNull(
+        InvoiceSeries series, Integer year, Integer number);
+
+    Optional<Invoice> findBySeriesAndYearAndNumberAndSubNumber(
+        InvoiceSeries series, Integer year, Integer number, Integer subNumber);
 
     List<Invoice> findBySupplierIdAndReceptionDateAndFilePathIsNullAndPeppolFalse(Long supplierId, LocalDate receptionDate);
 
-    /** Candidates for reconciling an inbox file: same supplier, no document yet. */
-    List<Invoice> findBySupplierIdAndFilePathIsNull(Long supplierId);
+    /**
+     * Candidates for reconciling an inbox file: same supplier, no document yet.
+     * Restreint au facturier documente: une depense contractuelle n'attend aucun
+     * fichier, et un PDF depose ne doit donc jamais s'y rattacher.
+     */
+    List<Invoice> findBySupplierIdAndSeriesAndFilePathIsNull(Long supplierId, InvoiceSeries series);
 
     List<Invoice> findBySupplierIdAndFilePathIsNotNullOrderByYearDescNumberDesc(Long supplierId);
 
@@ -53,4 +68,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     int countBySupplierId(Long supplierId);
 
     int countBySupplierIdAndFilePathIsNotNull(Long supplierId);
+
+    List<Invoice> findByRecurringExpenseIdOrderByScopeDateAsc(Long recurringExpenseId);
+
+    boolean existsByRecurringExpenseId(Long recurringExpenseId);
+
+    boolean existsBySupplierIdAndSeries(Long supplierId, InvoiceSeries series);
 }

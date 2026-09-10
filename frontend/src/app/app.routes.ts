@@ -36,6 +36,21 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
   },
   {
+    path: 'recurring',
+    loadComponent: () => import('./recurring/recurring-list/recurring-list').then(m => m.RecurringList),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'recurring/new',
+    loadComponent: () => import('./recurring/recurring-form/recurring-form').then(m => m.RecurringForm),
+    canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
+  },
+  {
+    path: 'recurring/:id/edit',
+    loadComponent: () => import('./recurring/recurring-form/recurring-form').then(m => m.RecurringForm),
+    canActivate: [authGuard, roleGuard(['ADMIN', 'USER'])]
+  },
+  {
     path: 'peppol',
     loadComponent: () => import('./peppol/peppol-list/peppol-list').then(m => m.PeppolList),
     canActivate: [authGuard]

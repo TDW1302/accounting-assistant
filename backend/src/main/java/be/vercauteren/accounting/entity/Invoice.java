@@ -23,7 +23,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "invoice", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"\"year\"", "number", "sub_number"})
+    @UniqueConstraint(columnNames = {"series", "\"year\"", "number", "sub_number"})
 })
 @Getter
 @Setter
@@ -36,6 +36,10 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Numero dans sa serie. Le compteur est propre a chaque {@link InvoiceSeries}
+     * et repart a 1 chaque annee.
+     */
     @NotNull
     @Column(nullable = false)
     private Integer number;
@@ -45,6 +49,16 @@ public class Invoice {
     @NotNull
     @Column(name = "\"year\"", nullable = false)
     private Integer year;
+
+    /**
+     * Serie de numerotation. Separe le facturier documente des depenses
+     * contractuelles, dont aucun document n'est attendu.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private InvoiceSeries series = InvoiceSeries.INVOICE;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -101,4 +115,17 @@ public class Invoice {
 
     @Column(unique = true)
     private String falcoDocumentId;
+
+    /**
+     * Modele recurrent dont cette ligne est une echeance. Nul pour tout le reste,
+     * y compris pour une depense sans document saisie ponctuellement.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurring_expense_id")
+    private RecurringExpense recurringExpense;
+
+    /** Aucun document n'est attendu pour les depenses contractuelles. */
+    public boolean expectsDocument() {
+        return series == InvoiceSeries.INVOICE;
+    }
 }

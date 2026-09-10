@@ -17,6 +17,12 @@ public enum InvoiceSource {
     INBOX,
 
     /**
+     * Echeance engendree depuis un modele de depense recurrente. L'auteur reste
+     * la personne qui a demande la generation: rien n'est cree sans son geste.
+     */
+    RECURRING,
+
+    /**
      * Reprise du fichier Excel d'origine. Seul cas ou createdBy est nul: ces
      * factures preexistent a l'application, les attribuer a qui a lance l'import
      * en ferait son auteur a tort.

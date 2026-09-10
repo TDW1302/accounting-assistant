@@ -2,6 +2,7 @@ package be.vercauteren.accounting.specification;
 
 import be.vercauteren.accounting.entity.ExpenseCategory;
 import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
 import be.vercauteren.accounting.entity.Supplier;
 import jakarta.persistence.criteria.Join;
 import java.math.BigDecimal;
@@ -21,6 +22,10 @@ public class InvoiceSpecification {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("id"), supplierId);
     }
 
+    public static Specification<Invoice> hasSeries(InvoiceSeries series) {
+        return (root, query, cb) -> cb.equal(root.get("series"), series);
+    }
+
     public static Specification<Invoice> hasCategory(ExpenseCategory category) {
         return (root, query, cb) -> cb.equal(root.get("supplier").get("category"), category);
     }
@@ -29,11 +34,17 @@ public class InvoiceSpecification {
      * No file on disk. Les factures Peppol en sont exclues par defaut: leur document
      * reste chez Falco, leur absence de fichier n'est donc pas un oubli. Les inclure
      * sert a repasser derriere pour charger celles qu'on veut aussi en local.
+     * Les depenses de la serie EXPENSE sont exclues dans tous les cas.
      */
     public static Specification<Invoice> missingDocument(boolean includePeppol) {
-        return (root, query, cb) -> includePeppol
-            ? cb.isNull(root.get("filePath"))
-            : cb.and(cb.isNull(root.get("filePath")), cb.isFalse(root.get("peppol")));
+        return (root, query, cb) -> {
+            // Les depenses contractuelles n'attendent aucun document: les lister
+            // comme manquantes rendrait l'ecran inutilisable des le premier loyer.
+            var documented = cb.equal(root.get("series"), InvoiceSeries.INVOICE);
+            return includePeppol
+                ? cb.and(documented, cb.isNull(root.get("filePath")))
+                : cb.and(documented, cb.isNull(root.get("filePath")), cb.isFalse(root.get("peppol")));
+        };
     }
 
     public static Specification<Invoice> amountBetween(BigDecimal min, BigDecimal max) {
