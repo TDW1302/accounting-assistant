@@ -10,7 +10,7 @@ par Dependabot ne doit pas etre refusee au motif qu'elle ne correspond pas a ce 
 est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 
 - **Backend**: Java 25, Spring Boot 4.1.1, Gradle 9.7.1 — package `be.vercauteren.accounting`
-  - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, Apache POI 5.5.1, Anthropic Java SDK 2.61.0, Google GenAI SDK 1.68.0
+  - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, Apache POI 5.5.1, Anthropic Java SDK 2.61.0, Google GenAI SDK 1.70.0
   - Tests: Testcontainers 1.21.4 sur `postgres:17-alpine` — un demon Docker doit tourner
 - **Frontend**: Angular 21 (`^21.1.0`, resolu en 21.2.x), TypeScript `~5.9.2`, SCSS, npm 11.8.0
   - `ng test` tourne sur vitest 4: `@angular/build@21` declare `peerOptional vitest@"^4.0.8"`.
