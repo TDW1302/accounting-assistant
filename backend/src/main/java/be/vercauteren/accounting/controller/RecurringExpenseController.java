@@ -9,6 +9,7 @@ import be.vercauteren.accounting.dto.RecurringExpenseRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseResponse;
 import be.vercauteren.accounting.dto.RecurringGenerationRequest;
 import be.vercauteren.accounting.dto.RecurringGenerationResponse;
+import be.vercauteren.accounting.dto.RecurringLinkOption;
 import be.vercauteren.accounting.dto.RecurringOccurrence;
 import be.vercauteren.accounting.service.RecurringExpenseService;
 import jakarta.validation.Valid;
@@ -77,6 +78,15 @@ public class RecurringExpenseController {
     @GetMapping("/{id}/entries")
     public List<InvoiceResponse> findEntries(@PathVariable Long id) {
         return recurringExpenseService.findEntries(id);
+    }
+
+    /**
+     * Les modeles qui peuvent accueillir cette ligne, vus depuis la facture.
+     * Pendant de /{id}/attachable, pour l'ecran des documents manquants.
+     */
+    @GetMapping("/options/{invoiceId}")
+    public List<RecurringLinkOption> findLinkOptions(@PathVariable Long invoiceId) {
+        return recurringExpenseService.findLinkOptions(invoiceId);
     }
 
     /** Lignes du meme fournisseur, sans document, encore rattachables. */

@@ -11,6 +11,7 @@ import {
   RecurringExpenseRequest,
   RecurringGenerationRequest,
   RecurringGenerationResponse,
+  RecurringLinkOption,
   RecurringOccurrence,
 } from '../models/recurring-expense.model';
 
@@ -42,6 +43,11 @@ export class RecurringExpenseService {
   /** Les lignes du facturier déjà rattachées à ce modèle. */
   entries(id: number): Observable<Invoice[]> {
     return this.http.get<Invoice[]>(`${this.url}/${id}/entries`);
+  }
+
+  /** Les modèles qui peuvent accueillir cette facture, vus depuis la facture. */
+  linkOptions(invoiceId: number): Observable<RecurringLinkOption[]> {
+    return this.http.get<RecurringLinkOption[]>(`${this.url}/options/${invoiceId}`);
   }
 
   /** Lignes du même fournisseur, sans document, encore rattachables. */

@@ -10,6 +10,7 @@ import be.vercauteren.accounting.dto.RecurringExpenseRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseResponse;
 import be.vercauteren.accounting.dto.RecurringGenerationRequest;
 import be.vercauteren.accounting.dto.RecurringGenerationResponse;
+import be.vercauteren.accounting.dto.RecurringLinkOption;
 import be.vercauteren.accounting.dto.RecurringOccurrence;
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.entity.InvoiceSeries;
@@ -332,6 +333,53 @@ public class RecurringExpenseService {
             occupant.getReceptionDate(),
             refusal == null,
             refusal
+        );
+    }
+
+    /**
+     * Les modeles actifs qui peuvent accueillir cette ligne. Sert a rattacher
+     * depuis la facture — l'ecran des documents manquants — la ou findAttachable
+     * part du modele. Un modele d'un autre fournisseur n'est pas propose: le
+     * rattachement l'exige, et le montrer pour le refuser ensuite n'aide pas.
+     */
+    public List<RecurringLinkOption> findLinkOptions(Long invoiceId) {
+        Invoice invoice = invoiceService.getForRecurringLink(invoiceId);
+        if (invoice.getRecurringExpense() != null || invoice.getFilePath() != null) {
+            return List.of();
+        }
+
+        return recurringExpenseRepository.findByActiveTrueOrderByLabelAsc().stream()
+            .filter(expense -> expense.getSupplier().getId().equals(invoice.getSupplier().getId()))
+            .map(expense -> toLinkOption(expense, invoice))
+            .toList();
+    }
+
+    private RecurringLinkOption toLinkOption(RecurringExpense expense, Invoice invoice) {
+        LocalDate suggested = RecurringSchedule.periodStart(
+            expense.getPeriodicity(), invoice.getReceptionDate());
+        boolean withinModel = RecurringSchedule
+            .dueDateFor(expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), suggested)
+            .isPresent();
+
+        String issue = null;
+        AttachableInvoice.ConflictingEntry conflict = null;
+        Map<LocalDate, Invoice> taken = coverage(expense);
+        if (!withinModel) {
+            issue = "Hors des periodes du modele";
+        } else if (taken.containsKey(suggested)) {
+            issue = "Periode deja couverte";
+            conflict = toConflict(taken.get(suggested));
+        }
+
+        return new RecurringLinkOption(
+            expense.getId(),
+            expense.getLabel(),
+            expense.getPeriodicity(),
+            suggested,
+            RecurringSchedule.periodLabel(expense.getPeriodicity(), suggested),
+            issue == null,
+            issue,
+            conflict
         );
     }
 

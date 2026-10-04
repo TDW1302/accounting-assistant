@@ -25,10 +25,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Remplacer supprime la ligne en place. La regle qui dit laquelle est supprimable
- * est la seule chose qui separe un rattachement d'une perte d'ecriture.
+ * Rattacher une ligne existante, remplacer celle qui occupe la periode, et lister
+ * les modeles qui peuvent accueillir une facture.
+ *
+ * <p>Remplacer supprime la ligne en place. La regle qui dit laquelle est
+ * supprimable est la seule chose qui separe un rattachement d'une perte
+ * d'ecriture: elle est couverte sous tous ses angles.
  */
-class RecurringReplaceTest {
+class RecurringLinkTest {
 
     private RecurringExpenseRepository recurringExpenseRepository;
     private InvoiceRepository invoiceRepository;
@@ -176,6 +180,83 @@ class RecurringReplaceTest {
             .hasMessageContaining("already covers");
 
         verify(invoiceService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Seuls les modeles du meme fournisseur peuvent accueillir une ligne")
+    void linkOptionsKeepOnlyModelsOfTheSameSupplier() {
+        RecurringExpense other = RecurringExpense.builder()
+            .id(2L)
+            .label("Frais bancaires")
+            .supplier(Supplier.builder().id(99L).name("Banque").build())
+            .periodicity(Periodicity.MONTHLY)
+            .startDate(LocalDate.of(2026, 1, 1))
+            .active(true)
+            .build();
+        when(recurringExpenseRepository.findByActiveTrueOrderByLabelAsc())
+            .thenReturn(List.of(model(), other));
+        when(invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(1L)).thenReturn(List.of());
+        when(invoiceService.getForRecurringLink(77L)).thenReturn(documentlessInvoice());
+
+        var options = service.findLinkOptions(77L);
+
+        assertThat(options).singleElement()
+            .satisfies(o -> {
+                assertThat(o.label()).isEqualTo("Loyer bureau");
+                assertThat(o.available()).isTrue();
+                assertThat(o.suggestedPeriodStart()).isEqualTo(PERIOD);
+            });
+    }
+
+    @Test
+    @DisplayName("Une ligne qui porte un document n'a aucun modele a rejoindre")
+    void linkOptionsAreEmptyForAnInvoiceCarryingADocument() {
+        Invoice withDocument = documentlessInvoice();
+        withDocument.setFilePath("2026/042-Proprio.pdf");
+        when(invoiceService.getForRecurringLink(77L)).thenReturn(withDocument);
+
+        assertThat(service.findLinkOptions(77L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Une ligne deja rattachee non plus")
+    void linkOptionsAreEmptyForAnAlreadyLinkedInvoice() {
+        Invoice linked = documentlessInvoice();
+        linked.setRecurringExpense(model());
+        when(invoiceService.getForRecurringLink(77L)).thenReturn(linked);
+
+        assertThat(service.findLinkOptions(77L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Un modele dont la periode est prise nomme la ligne qui l'occupe")
+    void linkOptionsNameTheOccupant() {
+        when(recurringExpenseRepository.findByActiveTrueOrderByLabelAsc()).thenReturn(List.of(model()));
+        when(invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(1L))
+            .thenReturn(List.of(occupant(InvoiceSeries.EXPENSE, InvoiceSource.RECURRING, null)));
+        when(invoiceService.getForRecurringLink(77L)).thenReturn(documentlessInvoice());
+
+        var options = service.findLinkOptions(77L);
+
+        assertThat(options).singleElement().satisfies(o -> {
+            assertThat(o.available()).isFalse();
+            assertThat(o.issue()).isEqualTo("Periode deja couverte");
+            assertThat(o.conflict()).isNotNull();
+            assertThat(o.conflict().displayNumber()).isEqualTo("D007");
+            assertThat(o.conflict().replaceable()).isTrue();
+        });
+    }
+
+    private Invoice documentlessInvoice() {
+        return Invoice.builder()
+            .id(77L)
+            .number(42)
+            .series(InvoiceSeries.INVOICE)
+            .year(2026)
+            .source(InvoiceSource.EXCEL_IMPORT)
+            .receptionDate(LocalDate.of(2026, 7, 3))
+            .supplier(Supplier.builder().id(9L).name("Proprietaire").build())
+            .build();
     }
 
     @Test

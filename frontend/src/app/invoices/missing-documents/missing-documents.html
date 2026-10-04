@@ -72,9 +72,71 @@
                    accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp"
                    (change)="onFileSelected($event, inv)">
           }
+          @if (canLink(inv) && (authService.hasRole('ADMIN') || authService.hasRole('USER'))) {
+            <button class="btn btn-sm btn-secondary" (click)="toggleLinkPanel(inv)">
+              {{ linkPanelFor() === inv.id ? 'Fermer' : 'Dépense récurrente' }}
+            </button>
+          }
           <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
         </td>
       </tr>
+
+      @if (linkPanelFor() === inv.id) {
+        <tr class="link-panel-row">
+          <td colspan="10">
+            <div class="link-panel">
+              <p class="link-panel-intro">
+                Rattacher <span class="mono">{{ inv.displayNumber }}</span> à une dépense
+                récurrente de {{ inv.supplier.name }}. Le numéro et l'année ne changent pas :
+                seule la période couverte est inscrite, et la facture sort de cette liste.
+              </p>
+
+              @if (linkError(); as message) {
+                <div class="form-error">{{ message }}</div>
+              }
+
+              @if (linkLoading()) {
+                <p class="link-empty">Chargement...</p>
+              } @else {
+                @for (o of linkOptions(); track o.recurringExpenseId) {
+                  <div class="link-option" [class.blocked]="!o.available">
+                    <span class="link-option-label">{{ o.label }}</span>
+                    <label class="link-option-period">
+                      Période
+                      <input class="period-input" type="date"
+                             [(ngModel)]="chosenPeriod[o.recurringExpenseId]">
+                    </label>
+                    <div class="link-option-actions">
+                      <button class="btn btn-sm btn-primary" (click)="attachTo(inv, o)"
+                              [disabled]="linkBusy()">Rattacher</button>
+                      @if (o.conflict?.replaceable) {
+                        <button class="btn btn-sm btn-danger" (click)="replaceOn(inv, o)"
+                                [disabled]="linkBusy()">Remplacer</button>
+                      }
+                    </div>
+                    @if (!o.available) {
+                      <span class="link-option-issue">
+                        {{ o.issue }}
+                        @if (o.conflict; as k) {
+                          — occupée par <span class="mono">{{ k.displayNumber }}</span>
+                          ({{ k.year }}, {{ k.amountIncVat | currency:'EUR':'symbol':'1.2-2' }})
+                          @if (!k.replaceable) {
+                            <span class="conflict-reason">{{ k.notReplaceableReason }}</span>
+                          }
+                        }
+                      </span>
+                    }
+                  </div>
+                } @empty {
+                  <p class="link-empty">
+                    Aucune dépense récurrente active pour ce fournisseur.
+                  </p>
+                }
+              }
+            </div>
+          </td>
+        </tr>
+      }
     } @empty {
       <tr>
         <td colspan="10" class="empty">

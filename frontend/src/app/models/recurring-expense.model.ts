@@ -112,3 +112,20 @@ export interface RecurringAttachBatchResponse {
   attached: { id: number; displayNumber: string }[];
   skipped: string[];
 }
+
+/**
+ * Un modèle capable d'accueillir une facture donnée — le miroir de
+ * `AttachableInvoice`, vu depuis la facture. La période proposée vient du
+ * serveur : la ramener au début de sa période dépend du rythme, et réécrire
+ * cette règle ici la ferait diverger.
+ */
+export interface RecurringLinkOption {
+  recurringExpenseId: number;
+  label: string;
+  periodicity: Periodicity;
+  suggestedPeriodStart: string;
+  suggestedPeriodLabel: string;
+  available: boolean;
+  issue: string | null;
+  conflict: ConflictingEntry | null;
+}
