@@ -2,6 +2,8 @@ package be.vercauteren.accounting.controller;
 
 import be.vercauteren.accounting.dto.AttachableInvoice;
 import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.dto.RecurringAttachBatchRequest;
+import be.vercauteren.accounting.dto.RecurringAttachBatchResponse;
 import be.vercauteren.accounting.dto.RecurringAttachRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseRequest;
 import be.vercauteren.accounting.dto.RecurringExpenseResponse;
@@ -91,6 +93,24 @@ public class RecurringExpenseController {
     public InvoiceResponse attach(@PathVariable Long id,
                                    @Valid @RequestBody RecurringAttachRequest request) {
         return recurringExpenseService.attach(id, request);
+    }
+
+    /** Rattache plusieurs lignes d'un coup, pour reprendre un historique entier. */
+    @PostMapping("/{id}/attach-batch")
+    public RecurringAttachBatchResponse attachAll(@PathVariable Long id,
+                                                   @Valid @RequestBody RecurringAttachBatchRequest request) {
+        return recurringExpenseService.attachAll(id, request);
+    }
+
+    /**
+     * Rattache une ligne a la place de l'echeance engendree pour cette periode,
+     * qui est supprimee. Refuse si la ligne en place n'est pas une projection du
+     * modele: c'est alors un enregistrement a supprimer soi-meme, en le voyant.
+     */
+    @PostMapping("/{id}/replace")
+    public InvoiceResponse replace(@PathVariable Long id,
+                                    @Valid @RequestBody RecurringAttachRequest request) {
+        return recurringExpenseService.replace(id, request);
     }
 
     @DeleteMapping("/entries/{invoiceId}")

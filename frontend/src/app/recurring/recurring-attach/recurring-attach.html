@@ -31,15 +31,40 @@
   <div class="form-error">{{ message }}</div>
 }
 
+@if (batchResult(); as batch) {
+  <div class="import-result">
+    <strong>Rattachement terminé :</strong>
+    {{ batch.attached.length }} ligne(s) rattachée(s).
+    @if (batch.skipped.length > 0) {
+      <ul>
+        @for (s of batch.skipped; track s) {
+          <li>{{ s }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="batchResult.set(null)">Fermer</button>
+  </div>
+}
+
 <section>
   <div class="section-header">
     <h2>Lignes rattachables</h2>
+    <div class="section-actions">
+      <button class="btn btn-primary" (click)="attachSelected()"
+              [disabled]="batchRunning() || selectedCount() === 0">
+        {{ batchRunning() ? 'Rattachement...' : 'Rattacher la sélection (' + selectedCount() + ')' }}
+      </button>
+    </div>
   </div>
 
   <div class="table-wrapper">
   <table>
     <thead>
       <tr>
+        <th class="check-col">
+          <input type="checkbox" [checked]="allSelected()" (change)="toggleAll()"
+                 [disabled]="batchable().length === 0" aria-label="Tout sélectionner">
+        </th>
         <th>N°</th>
         <th>Année</th>
         <th>Date</th>
@@ -51,7 +76,13 @@
     </thead>
     <tbody>
       @for (c of candidates(); track c.invoiceId) {
-        <tr>
+        <tr [class.blocked-row]="!c.suggestionAvailable">
+          <td class="check-col">
+            @if (c.suggestionAvailable) {
+              <input type="checkbox" [checked]="isSelected(c)" (change)="toggle(c)"
+                     [attr.aria-label]="'Sélectionner ' + c.displayNumber">
+            }
+          </td>
           <td class="mono">{{ c.displayNumber }}</td>
           <td>{{ c.year }}</td>
           <td>{{ c.receptionDate | date:'dd/MM/yyyy' }}</td>
@@ -63,18 +94,36 @@
                    [attr.aria-label]="'Période couverte par ' + c.displayNumber">
             @if (!c.suggestionAvailable) {
               <span class="issue">{{ c.suggestionIssue }}</span>
+              @if (c.conflict; as k) {
+                <span class="conflict">
+                  Occupée par <span class="mono">{{ k.displayNumber }}</span>
+                  ({{ k.year }}, {{ k.amountIncVat | currency:'EUR':'symbol':'1.2-2' }},
+                  reçue le {{ k.receptionDate | date:'dd/MM/yyyy' }}).
+                  @if (!k.replaceable) {
+                    <span class="conflict-reason">{{ k.notReplaceableReason }}</span>
+                  }
+                </span>
+              }
             }
           </td>
           <td class="actions">
+            <!-- Rattacher reste offert sur une ligne bloquee: corriger la periode
+                 suffit souvent a la debloquer, et le refus du serveur est lisible. -->
             <button class="btn btn-sm btn-primary" (click)="attach(c)"
                     [disabled]="busyInvoiceId() === c.invoiceId">
               Rattacher
             </button>
+            @if (c.conflict?.replaceable) {
+              <button class="btn btn-sm btn-danger" (click)="replace(c)"
+                      [disabled]="busyInvoiceId() === c.invoiceId">
+                Remplacer
+              </button>
+            }
           </td>
         </tr>
       } @empty {
         <tr>
-          <td colspan="7" class="empty">
+          <td colspan="8" class="empty">
             Aucune ligne sans document pour ce fournisseur.
           </td>
         </tr>

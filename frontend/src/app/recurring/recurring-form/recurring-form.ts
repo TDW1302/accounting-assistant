@@ -112,7 +112,7 @@ export class RecurringForm implements OnInit {
       next: () => this.router.navigate(['/recurring']),
       error: (err) => {
         this.saving = false;
-        this.error.set(err?.error?.message ?? 'Erreur lors de l\'enregistrement.');
+        this.error.set(err?.error?.error ?? 'Erreur lors de l\'enregistrement.');
       },
     });
   }

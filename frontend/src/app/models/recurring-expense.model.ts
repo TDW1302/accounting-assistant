@@ -69,6 +69,21 @@ export interface RecurringGenerationResponse {
   skipped: string[];
 }
 
+/**
+ * La ligne qui occupe déjà la période proposée. `replaceable` n'est vrai que
+ * pour une échéance engendrée par le modèle : remplacer la supprime, et une
+ * projection du modèle se refait d'un clic.
+ */
+export interface ConflictingEntry {
+  invoiceId: number;
+  displayNumber: string;
+  year: number;
+  amountIncVat: number | null;
+  receptionDate: string;
+  replaceable: boolean;
+  notReplaceableReason: string | null;
+}
+
 /** Une ligne déjà au facturier qu'on peut rattacher à un modèle. */
 export interface AttachableInvoice {
   invoiceId: number;
@@ -81,9 +96,19 @@ export interface AttachableInvoice {
   suggestedPeriodLabel: string;
   suggestionAvailable: boolean;
   suggestionIssue: string | null;
+  conflict: ConflictingEntry | null;
 }
 
 export interface RecurringAttachRequest {
   invoiceId: number;
   periodStart: string;
+}
+
+export interface RecurringAttachBatchRequest {
+  attachments: RecurringAttachRequest[];
+}
+
+export interface RecurringAttachBatchResponse {
+  attached: { id: number; displayNumber: string }[];
+  skipped: string[];
 }

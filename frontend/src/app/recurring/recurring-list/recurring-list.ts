@@ -126,7 +126,7 @@ export class RecurringList implements OnInit {
 
     this.recurringService.delete(expense.id).subscribe({
       next: () => this.load(),
-      error: (err) => alert(err?.error?.message
+      error: (err) => alert(err?.error?.error
         ?? 'Suppression impossible: des échéances ont déjà été inscrites. '
            + 'Renseignez une date de fin ou désactivez le modèle.'),
     });

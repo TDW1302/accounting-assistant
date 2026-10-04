@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { Invoice } from '../models/invoice.model';
 import {
   AttachableInvoice,
+  RecurringAttachBatchRequest,
+  RecurringAttachBatchResponse,
   RecurringAttachRequest,
   RecurringExpense,
   RecurringExpenseRequest,
@@ -50,6 +52,16 @@ export class RecurringExpenseService {
   /** Rattache une ligne existante. Son numéro et son année ne changent pas. */
   attach(id: number, req: RecurringAttachRequest): Observable<Invoice> {
     return this.http.post<Invoice>(`${this.url}/${id}/attach`, req);
+  }
+
+  /** Rattache plusieurs lignes d'un coup. Les conflits sont écartés, pas résolus. */
+  attachAll(id: number, req: RecurringAttachBatchRequest): Observable<RecurringAttachBatchResponse> {
+    return this.http.post<RecurringAttachBatchResponse>(`${this.url}/${id}/attach-batch`, req);
+  }
+
+  /** Rattache à la place de l'échéance engendrée pour cette période, supprimée. */
+  replace(id: number, req: RecurringAttachRequest): Observable<Invoice> {
+    return this.http.post<Invoice>(`${this.url}/${id}/replace`, req);
   }
 
   detach(invoiceId: number): Observable<Invoice> {
