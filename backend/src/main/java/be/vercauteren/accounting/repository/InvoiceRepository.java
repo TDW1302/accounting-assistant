@@ -2,10 +2,13 @@ package be.vercauteren.accounting.repository;
 
 import be.vercauteren.accounting.entity.Invoice;
 import be.vercauteren.accounting.entity.InvoiceSeries;
+import be.vercauteren.accounting.entity.InvoiceType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -83,4 +86,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
      */
     List<Invoice> findBySupplierIdAndFilePathIsNullAndRecurringExpenseIsNullOrderByYearDescNumberDesc(
         Long supplierId);
+
+    /** Analyse: le fournisseur porte la categorie, d'ou son chargement immediat. */
+    @EntityGraph(attributePaths = "supplier")
+    List<Invoice> findByTypeAndYearIn(InvoiceType type, Collection<Integer> years);
 }
