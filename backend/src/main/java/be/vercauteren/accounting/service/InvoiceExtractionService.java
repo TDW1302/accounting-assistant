@@ -24,6 +24,7 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.TextBlockParam;
+import com.anthropic.models.messages.ThinkingConfigBetweenTools;
 import com.google.genai.Client;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
@@ -57,6 +58,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class InvoiceExtractionService {
 
     private static final String PDF_MIME_TYPE = "application/pdf";
+
+    /**
+     * Plafond de sortie Claude. Le JSON tient en quelques centaines de tokens, mais
+     * sur un modele qui reflechit par defaut la reflexion compte dans ce plafond: trop
+     * bas, elle le consomme et le JSON est coupe, ce qui rend un resultat vide sans
+     * erreur. Le plafond n'est pas facture, seuls les tokens produits le sont.
+     */
+    private static final long CLAUDE_MAX_TOKENS = 4096L;
 
     /**
      * Constant d'un fournisseur a l'autre — le nom de la partie voyage dans le
@@ -233,13 +242,13 @@ public class InvoiceExtractionService {
     // --- Text-based calls ---
 
     private String callClaude(String systemPrompt, String userText, Map<String, Object> schema) {
-        MessageCreateParams params = MessageCreateParams.builder()
-            .maxTokens(1024L)
+        MessageCreateParams params = withoutThinking(MessageCreateParams.builder()
+            .maxTokens(CLAUDE_MAX_TOKENS)
             .model(anthropicModel)
             .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
             .outputConfig(claudeJsonOutput(schema))
             .addUserMessage(userText)
-            .build();
+            ).build();
 
         Message message = anthropicClient.messages().create(params);
 
@@ -263,6 +272,20 @@ public class InvoiceExtractionService {
             .text(text)
             .cacheControl(CacheControlEphemeral.builder().build())
             .build();
+    }
+
+    /**
+     * Une extraction n'a rien a gagner a la reflexion: elle allonge la reponse et
+     * la facture. Sonnet 5.5 reflechit par defaut et refuse {@code disabled}; son
+     * reglage le plus bas est {@code between_tools}, que tout autre modele refuse.
+     * D'ou le test sur le modele: un {@code ANTHROPIC_MODEL} different garde le
+     * comportement par defaut au lieu de faire echouer chaque extraction.
+     */
+    private MessageCreateParams.Builder withoutThinking(MessageCreateParams.Builder builder) {
+        if (anthropicModel.startsWith("claude-sonnet-5-5")) {
+            builder.thinking(ThinkingConfigBetweenTools.builder().build());
+        }
+        return builder;
     }
 
     /**
@@ -316,8 +339,8 @@ public class InvoiceExtractionService {
                     .build())
                 .build());
 
-        MessageCreateParams params = MessageCreateParams.builder()
-            .maxTokens(1024L)
+        MessageCreateParams params = withoutThinking(MessageCreateParams.builder()
+            .maxTokens(CLAUDE_MAX_TOKENS)
             .model(anthropicModel)
             .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
             .outputConfig(claudeJsonOutput(schema))
@@ -327,7 +350,7 @@ public class InvoiceExtractionService {
                     .text(userPrefix + "Extract the data from this document.")
                     .build())
             ))
-            .build();
+            ).build();
 
         Message message = anthropicClient.messages().create(params);
 
