@@ -12,17 +12,21 @@ import be.vercauteren.accounting.repository.UserRepository;
 import be.vercauteren.accounting.util.VatUtils;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.Base64ImageSource;
 import com.anthropic.models.messages.Base64PdfSource;
 import com.anthropic.models.messages.CacheControlEphemeral;
 import com.anthropic.models.messages.ContentBlockParam;
 import com.anthropic.models.messages.DocumentBlockParam;
 import com.anthropic.models.messages.ImageBlockParam;
+import com.anthropic.models.messages.JsonOutputFormat;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.TextBlockParam;
 import com.google.genai.Client;
 import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import tools.jackson.databind.JsonNode;
@@ -31,9 +35,12 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +80,38 @@ public class InvoiceExtractionService {
         Respond with ONLY the JSON object, no markdown, no explanation."""
         .formatted(java.util.Arrays.stream(ExpenseCategory.values())
             .map(Enum::name).collect(Collectors.joining(", ")));
+
+    /**
+     * Schemas JSON imposes aux deux fournisseurs: la reponse est contrainte au
+     * decodage, plus seulement demandee dans le prompt. Le prompt garde la
+     * semantique de chaque champ; le schema n'en fixe que la forme.
+     *
+     * <p>Tous les champs sont requis, l'absence s'exprime par null: l'API Claude
+     * plafonne le nombre de proprietes optionnelles et d'unions par requete, et
+     * chaque union {@code anyOf [.., null]} en consomme une (16 au plus).
+     *
+     * <p>Cartes ordonnees: le schema entre dans le prefixe cache cote Claude, et un
+     * {@code Map.of} change d'ordre d'iteration d'une JVM a l'autre.
+     */
+    private static final Map<String, Object> INVOICE_SCHEMA = objectSchema(properties(
+        "type", enumSchema(InvoiceType.class),
+        "supplierName", nullable(typeSchema("string")),
+        "enterpriseNumber", nullable(typeSchema("string")),
+        "amountIncVat", nullable(typeSchema("number")),
+        "amountExVat", nullable(typeSchema("number")),
+        "vatAmount", nullable(typeSchema("number")),
+        "receptionDate", nullable(typeSchema("string")),
+        "paymentDate", nullable(typeSchema("string")),
+        "dateScope", enumSchema(DateScope.class),
+        "scopeDate", nullable(typeSchema("string")),
+        "comment", nullable(typeSchema("string")),
+        "expenseCategory", nullable(enumSchema(ExpenseCategory.class))
+    ));
+
+    private static final Map<String, Object> SUPPLIER_SCHEMA = objectSchema(properties(
+        "enterpriseNumber", nullable(typeSchema("string")),
+        "category", enumSchema(ExpenseCategory.class)
+    ));
 
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
@@ -116,7 +155,7 @@ public class InvoiceExtractionService {
             .sorted(Comparator.comparing(Supplier::getId))
             .toList();
 
-        String responseText = askAi(buildSystemPrompt(suppliers), "", file);
+        String responseText = askAi(buildSystemPrompt(suppliers), "", file, INVOICE_SCHEMA);
         return parseResponse(responseText, suppliers);
     }
 
@@ -129,7 +168,7 @@ public class InvoiceExtractionService {
      * plutot qu'une exception, pour qu'un document illisible n'interrompe pas le lot.
      */
     public SupplierAiData extractSupplierData(MultipartFile file, String partyName) throws IOException {
-        String responseText = askAi(SUPPLIER_SYSTEM_PROMPT, "Party: " + partyName + "\n\n", file);
+        String responseText = askAi(SUPPLIER_SYSTEM_PROMPT, "Party: " + partyName + "\n\n", file, SUPPLIER_SCHEMA);
         return parseSupplierResponse(responseText);
     }
 
@@ -138,7 +177,8 @@ public class InvoiceExtractionService {
      * utilisateur porte ce qui varie: {@code userPrefix} s'y ajoute en tete pour
      * situer la demande sans casser le prefixe cache.
      */
-    private String askAi(String systemPrompt, String userPrefix, MultipartFile file) throws IOException {
+    private String askAi(String systemPrompt, String userPrefix, MultipartFile file,
+                         Map<String, Object> schema) throws IOException {
         AiProvider provider = resolveProvider();
 
         String contentType = file.getContentType();
@@ -158,8 +198,8 @@ public class InvoiceExtractionService {
             String userText = userPrefix + "Invoice text:\n---\n" + pdfText + "\n---";
             log.info("Using text-based extraction with {}", provider);
             return (provider == AiProvider.GEMINI)
-                ? callGemini(systemPrompt + "\n\n" + userText)
-                : callClaude(systemPrompt, userText);
+                ? callGemini(systemPrompt + "\n\n" + userText, schema)
+                : callClaude(systemPrompt, userText, schema);
         }
 
         // Vision fallback (image or scanned PDF)
@@ -167,8 +207,8 @@ public class InvoiceExtractionService {
         String mimeType = isImage ? contentType : PDF_MIME_TYPE;
         byte[] fileBytes = file.getBytes();
         return (provider == AiProvider.GEMINI)
-            ? callGeminiVision(systemPrompt + "\n\n" + userPrefix, fileBytes, mimeType)
-            : callClaudeVision(systemPrompt, userPrefix, fileBytes, mimeType);
+            ? callGeminiVision(systemPrompt + "\n\n" + userPrefix, fileBytes, mimeType, schema)
+            : callClaudeVision(systemPrompt, userPrefix, fileBytes, mimeType, schema);
     }
 
     private AiProvider resolveProvider() {
@@ -192,11 +232,12 @@ public class InvoiceExtractionService {
 
     // --- Text-based calls ---
 
-    private String callClaude(String systemPrompt, String userText) {
+    private String callClaude(String systemPrompt, String userText, Map<String, Object> schema) {
         MessageCreateParams params = MessageCreateParams.builder()
             .maxTokens(1024L)
             .model(anthropicModel)
             .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
+            .outputConfig(claudeJsonOutput(schema))
             .addUserMessage(userText)
             .build();
 
@@ -224,15 +265,40 @@ public class InvoiceExtractionService {
             .build();
     }
 
-    private String callGemini(String prompt) {
+    /**
+     * Le schema s'ajoute au prefixe cache (l'API en tire une consigne systeme):
+     * constant, il ne casse pas le cache; modifie, il l'invalide une fois.
+     */
+    private OutputConfig claudeJsonOutput(Map<String, Object> schema) {
+        JsonOutputFormat.Schema.Builder jsonSchema = JsonOutputFormat.Schema.builder();
+        schema.forEach((key, value) -> jsonSchema.putAdditionalProperty(key, JsonValue.from(value)));
+        return OutputConfig.builder()
+            .format(JsonOutputFormat.builder().schema(jsonSchema.build()).build())
+            .build();
+    }
+
+    /**
+     * Le schema voyage tel quel: une carte JSON Schema, comme pour Claude. Rien
+     * n'est derive de classes Java, donc les deux fournisseurs recoivent la meme
+     * contrainte.
+     */
+    private GenerateContentConfig geminiJsonOutput(Map<String, Object> schema) {
+        return GenerateContentConfig.builder()
+            .responseMimeType("application/json")
+            .responseJsonSchema(schema)
+            .build();
+    }
+
+    private String callGemini(String prompt, Map<String, Object> schema) {
         GenerateContentResponse response = geminiClient.models
-            .generateContent(geminiModel, prompt, null);
+            .generateContent(geminiModel, prompt, geminiJsonOutput(schema));
         return response.text();
     }
 
     // --- Vision calls ---
 
-    private String callClaudeVision(String systemPrompt, String userPrefix, byte[] fileBytes, String mimeType) {
+    private String callClaudeVision(String systemPrompt, String userPrefix, byte[] fileBytes, String mimeType,
+                                    Map<String, Object> schema) {
         // Base64.getEncoder() n'insere pas de saut de ligne, ce que l'API exige.
         String base64 = Base64.getEncoder().encodeToString(fileBytes);
 
@@ -254,6 +320,7 @@ public class InvoiceExtractionService {
             .maxTokens(1024L)
             .model(anthropicModel)
             .systemOfTextBlockParams(List.of(cacheableSystemBlock(systemPrompt)))
+            .outputConfig(claudeJsonOutput(schema))
             .addUserMessageOfBlockParams(List.of(
                 fileBlock,
                 ContentBlockParam.ofText(TextBlockParam.builder()
@@ -270,7 +337,8 @@ public class InvoiceExtractionService {
             .collect(Collectors.joining());
     }
 
-    private String callGeminiVision(String prompt, byte[] imageBytes, String mimeType) {
+    private String callGeminiVision(String prompt, byte[] imageBytes, String mimeType,
+                                    Map<String, Object> schema) {
         Content content = Content.builder()
             .role("user")
             .parts(List.of(
@@ -280,7 +348,7 @@ public class InvoiceExtractionService {
             .build();
 
         GenerateContentResponse response = geminiClient.models
-            .generateContent(geminiModel, List.of(content), null);
+            .generateContent(geminiModel, List.of(content), geminiJsonOutput(schema));
         return response.text();
     }
 
@@ -356,7 +424,7 @@ public class InvoiceExtractionService {
 
     private InvoiceExtractionResult parseResponse(String json, List<Supplier> suppliers) {
         try {
-            JsonNode node = objectMapper.readTree(stripCodeFences(json));
+            JsonNode node = objectMapper.readTree(json);
 
             String supplierName = blankToNull(node, "supplierName");
             String enterpriseNumber = blankToNull(node, "enterpriseNumber");
@@ -390,7 +458,7 @@ public class InvoiceExtractionService {
 
     private SupplierAiData parseSupplierResponse(String json) {
         try {
-            JsonNode node = objectMapper.readTree(stripCodeFences(json));
+            JsonNode node = objectMapper.readTree(json);
             return new SupplierAiData(
                 blankToNull(node, "enterpriseNumber"),
                 parseEnum(node, "category", ExpenseCategory.class, null)
@@ -399,15 +467,6 @@ public class InvoiceExtractionService {
             log.error("Failed to parse AI supplier response: {}", json, e);
             return new SupplierAiData(null, null);
         }
-    }
-
-    private String stripCodeFences(String json) {
-        String cleaned = json.strip();
-        if (cleaned.startsWith("```")) {
-            cleaned = cleaned.replaceFirst("```(?:json)?\\s*", "");
-            cleaned = cleaned.replaceFirst("\\s*```$", "");
-        }
-        return cleaned;
     }
 
     private Long matchSupplier(String name, String enterpriseNumber, List<Supplier> suppliers) {
@@ -481,6 +540,41 @@ public class InvoiceExtractionService {
         } catch (IllegalArgumentException e) {
             return defaultValue;
         }
+    }
+
+    // --- JSON Schema ---
+
+    private static Map<String, Object> typeSchema(String type) {
+        return Map.of("type", type);
+    }
+
+    private static Map<String, Object> enumSchema(Class<? extends Enum<?>> enumClass) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "string");
+        schema.put("enum", java.util.Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).toList());
+        return schema;
+    }
+
+    private static Map<String, Object> nullable(Map<String, Object> schema) {
+        return Map.of("anyOf", List.of(schema, typeSchema("null")));
+    }
+
+    /** Paires nom/schema, dans l'ordre ou le modele les ecrira. */
+    private static Map<String, Object> properties(Object... namesAndSchemas) {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        for (int i = 0; i < namesAndSchemas.length; i += 2) {
+            properties.put((String) namesAndSchemas[i], namesAndSchemas[i + 1]);
+        }
+        return properties;
+    }
+
+    private static Map<String, Object> objectSchema(Map<String, Object> properties) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("properties", properties);
+        schema.put("required", new ArrayList<>(properties.keySet()));
+        schema.put("additionalProperties", false);
+        return schema;
     }
 
     private InvoiceExtractionResult emptyResult() {
