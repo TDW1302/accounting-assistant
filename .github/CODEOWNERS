@@ -1,0 +1,8 @@
+# Changes to these paths need the owner's review before merging (with the
+# "Require review from Code Owners" rule on main).
+#
+# .claude/  hooks run commands on the machine of whoever starts Claude Code here,
+#           and the rules are instructions agents follow
+# .github/  workflows run on pull requests; this file guards itself
+/.claude/  @TDW1302
+/.github/  @TDW1302
