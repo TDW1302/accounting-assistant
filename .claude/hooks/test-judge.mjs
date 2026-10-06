@@ -21,12 +21,28 @@ const MAX_REFUSALS = 5;
 const MAX_DIFF_CHARS = 150_000;
 const PCT_TOLERANCE = 0.005; // percentages are compared rounded to 2 decimals
 
-const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const judgeDir = path.join(projectDir, '.claude', 'test-judge');
-const stateDir = path.join(judgeDir, 'state');
-const reportDir = path.join(judgeDir, 'reports');
 const baselineRel = '.claude/test-judge/coverage-baseline.json';
-const baselinePath = path.join(projectDir, baselineRel);
+let projectDir, stateDir, reportDir, baselinePath;
+
+// The checkout under judgement. CLAUDE_PROJECT_DIR stays on the launch directory
+// even after the session moves into a git worktree, so the session's own cwd
+// (given in the hook input) wins: each worktree is judged on its own changes.
+function useCheckout(dir) {
+  let root = dir;
+  try {
+    root = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim() || dir;
+  } catch {
+    // not a git checkout: keep the directory as is
+  }
+  projectDir = path.resolve(root);
+  stateDir = path.join(projectDir, '.claude', 'test-judge', 'state');
+  reportDir = path.join(projectDir, '.claude', 'test-judge', 'reports');
+  baselinePath = path.join(projectDir, baselineRel);
+}
+
+useCheckout(process.env.CLAUDE_PROJECT_DIR || process.cwd());
 
 const BACKEND = {
   name: 'backend',
@@ -54,12 +70,15 @@ let currentSessionId = 'unknown';
 // ---------------------------------------------------------------- helpers
 
 function readStdin() {
+  let input = {};
   try {
     const raw = fs.readFileSync(0, 'utf8');
-    return raw.trim() ? JSON.parse(raw) : {};
+    input = raw.trim() ? JSON.parse(raw) : {};
   } catch {
-    return {};
+    // no usable input
   }
+  if (input.cwd && fs.existsSync(input.cwd)) useCheckout(input.cwd);
+  return input;
 }
 
 function tryGit(...args) {
