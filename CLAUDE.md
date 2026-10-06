@@ -32,6 +32,11 @@ est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 - Test count, skipped count and line/branch coverage are compared to `.claude/test-judge/coverage-baseline.json` (never lower it); a read-only agent judge also rejects weakened tests. Ratchet after a gain: `node .claude/hooks/test-judge.mjs baseline`
 - After 5 refusals in a row the session stops and a report lands in `.claude/test-judge/reports/`
 
+## Redact secrets (PreToolUse hook, `.claude/hooks/redact-secrets.mjs`)
+- Every tool input is rewritten before it runs: passwords, secrets, API keys, tokens, private keys, URL credentials, IBANs and card numbers become `REDACTED`. Paths, `old_string` and search patterns are never touched.
+- Secrets go through environment variables / `${PLACEHOLDER}` references — those are kept. In test sources only unambiguous token formats are redacted, so fake fixture passwords survive.
+- Tests: `node --test .claude/hooks/`
+
 ## Key rules
 - Currency: always EUR
 - Invoice type determines party role (PURCHASE/SALE), not the party itself
