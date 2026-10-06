@@ -201,7 +201,7 @@ public class ExcelImportService {
 
     /**
      * Cle de rapprochement des fournisseurs. Ignore la casse ET les espaces, pour
-     * que "Mobile Viking", "Mobile viking" et "MobileViking" designent la meme fiche.
+     * que "Mobile Nova", "Mobile nova" et "MobileNova" designent la meme fiche.
      */
     static String normaliseSupplierKey(String name) {
         return name == null ? "" : name.toLowerCase().replaceAll("\\s+", "");

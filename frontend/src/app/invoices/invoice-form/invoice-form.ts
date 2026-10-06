@@ -69,7 +69,7 @@ export class InvoiceForm implements OnInit {
     }
   }
 
-  /** Les defauts du fournisseur (DKV mensuel, Vanbrada annuel, recu par Peppol...). */
+  /** Les defauts du fournisseur (une assurance mensuelle, une licence annuelle, recu par Peppol...). */
   onSupplierChange(): void {
     this.applySupplierDefaults(this.form.get('supplierId')?.value);
   }

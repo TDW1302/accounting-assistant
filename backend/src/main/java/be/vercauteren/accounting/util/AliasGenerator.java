@@ -40,7 +40,7 @@ public final class AliasGenerator {
 
     /**
      * Alias derive du nom: accents translittereres, mots colles et capitalises.
-     * "Le cafe de la poste" donne "LeCafeDeLaPoste", "P&Partners" donne "PPartners".
+     * "Le cafe du marche" donne "LeCafeDuMarche", "K&Associes" donne "KAssocies".
      * Retourne null si le nom ne contient aucun caractere exploitable.
      */
     public static String fromName(String name) {
@@ -52,7 +52,7 @@ public final class AliasGenerator {
         StringBuilder sb = new StringBuilder();
         for (String word : withoutAccents.split("[^A-Za-z0-9]+")) {
             if (word.isEmpty()) continue;
-            // Le reste du mot est conserve tel quel: "DKV" doit rester "DKV", pas "Dkv".
+            // Le reste du mot est conserve tel quel: "ABX" doit rester "ABX", pas "Abx".
             sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
         return sb.isEmpty() ? null : sb.toString();
@@ -97,7 +97,7 @@ public final class AliasGenerator {
         if (candidates.isEmpty()) return null;
 
         // Regroupe sans tenir compte de la casse, mais restitue la forme exacte la
-        // plus employee: "DKV" et "dkv" sont le meme usage, ecrit de deux facons.
+        // plus employee: "ABX" et "abx" sont le meme usage, ecrit de deux facons.
         Map<String, List<String>> byLowercase = new LinkedHashMap<>();
         for (String candidate : candidates) {
             byLowercase.computeIfAbsent(candidate.toLowerCase(Locale.ROOT), k -> new ArrayList<>())

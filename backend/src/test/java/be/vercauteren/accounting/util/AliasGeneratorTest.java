@@ -9,18 +9,18 @@ class AliasGeneratorTest {
 
     @Test
     void fromName_collapses_words_and_strips_accents() {
-        assertThat(AliasGenerator.fromName("Le café de la poste")).isEqualTo("LeCafeDeLaPoste");
-        assertThat(AliasGenerator.fromName("P&Partners")).isEqualTo("PPartners");
-        assertThat(AliasGenerator.fromName("Ag Insurance")).isEqualTo("AgInsurance");
+        assertThat(AliasGenerator.fromName("Le café du marché")).isEqualTo("LeCafeDuMarche");
+        assertThat(AliasGenerator.fromName("K&Associes")).isEqualTo("KAssocies");
+        assertThat(AliasGenerator.fromName("Ab Insurance")).isEqualTo("AbInsurance");
         assertThat(AliasGenerator.fromName("Versement anticipés")).isEqualTo("VersementAnticipes");
     }
 
     @Test
     void fromName_keeps_existing_capitalisation_inside_words() {
-        // "DKV" ne doit pas devenir "Dkv": seule la premiere lettre est forcee.
-        assertThat(AliasGenerator.fromName("DKV")).isEqualTo("DKV");
-        assertThat(AliasGenerator.fromName("SNCB Europe")).isEqualTo("SNCBEurope");
-        assertThat(AliasGenerator.fromName("7ici")).isEqualTo("7ici");
+        // "ABX" ne doit pas devenir "Abx": seule la premiere lettre est forcee.
+        assertThat(AliasGenerator.fromName("ABX")).isEqualTo("ABX");
+        assertThat(AliasGenerator.fromName("TRNX Europe")).isEqualTo("TRNXEurope");
+        assertThat(AliasGenerator.fromName("3tables")).isEqualTo("3tables");
     }
 
     @Test
@@ -32,18 +32,18 @@ class AliasGeneratorTest {
 
     @Test
     void fromFileName_reads_the_alias_after_the_date_part() {
-        assertThat(AliasGenerator.fromFileName("001-2601-DKV.pdf")).isEqualTo("DKV");
-        assertThat(AliasGenerator.fromFileName("004-260116-schievelat.pdf")).isEqualTo("schievelat");
-        assertThat(AliasGenerator.fromFileName("023-2601-OliverJames.PDF")).isEqualTo("OliverJames");
-        assertThat(AliasGenerator.fromFileName("046-2026Q2-Auto5.pdf")).isEqualTo("Auto5");
-        assertThat(AliasGenerator.fromFileName("008.1-2601-AmazonUgreenHDMI.pdf"))
-            .isEqualTo("AmazonUgreenHDMI");
+        assertThat(AliasGenerator.fromFileName("001-2601-ABX.pdf")).isEqualTo("ABX");
+        assertThat(AliasGenerator.fromFileName("004-260116-schoravela.pdf")).isEqualTo("schoravela");
+        assertThat(AliasGenerator.fromFileName("023-2601-AcmeConseil.PDF")).isEqualTo("AcmeConseil");
+        assertThat(AliasGenerator.fromFileName("046-2026Q2-Garage7.pdf")).isEqualTo("Garage7");
+        assertThat(AliasGenerator.fromFileName("008.1-2601-BoutiqueCableHDMI.pdf"))
+            .isEqualTo("BoutiqueCableHDMI");
     }
 
     @Test
     void fromFileName_handles_a_missing_date_part() {
         // DateScope.NONE: l'alias suit directement le numero.
-        assertThat(AliasGenerator.fromFileName("001-Auto5-PneuHiver.pdf")).isEqualTo("Auto5");
+        assertThat(AliasGenerator.fromFileName("001-Garage7-PneuHiver.pdf")).isEqualTo("Garage7");
     }
 
     @Test
@@ -51,29 +51,29 @@ class AliasGeneratorTest {
         // Espaces, accents et ponctuation trahissent un libelle de document.
         assertThat(AliasGenerator.fromFileName("082-260605-ISOC - Déclaration 273A - 2025.pdf")).isNull();
         assertThat(AliasGenerator.fromFileName("030-26Q1-Décompte_-_Cotisations_sociales.pdf")).isNull();
-        assertThat(AliasGenerator.fromFileName("25Q2-ElectriciteTesla.pdf")).isNull();
+        assertThat(AliasGenerator.fromFileName("25Q2-ElectriciteVolta.pdf")).isNull();
         assertThat(AliasGenerator.fromFileName("index.txt")).isNull();
     }
 
     @Test
     void mostFrequent_prefers_the_dominant_spelling() {
         List<String> files = List.of(
-            "004-260116-schievelat.pdf",
-            "017-260210-schievelat.pdf",
-            "072-260522-Skievelat.pdf");
-        assertThat(AliasGenerator.mostFrequentFromFileNames(files)).isEqualTo("schievelat");
+            "004-260116-schoravela.pdf",
+            "017-260210-schoravela.pdf",
+            "072-260522-Skoravela.pdf");
+        assertThat(AliasGenerator.mostFrequentFromFileNames(files)).isEqualTo("schoravela");
     }
 
     @Test
     void mostFrequent_ignores_casing_when_grouping() {
-        List<String> files = List.of("001-2601-DKV.pdf", "018-2602-dkv.pdf", "038-2603-DKV.pdf");
-        assertThat(AliasGenerator.mostFrequentFromFileNames(files)).isEqualTo("DKV");
+        List<String> files = List.of("001-2601-ABX.pdf", "018-2602-abx.pdf", "038-2603-ABX.pdf");
+        assertThat(AliasGenerator.mostFrequentFromFileNames(files)).isEqualTo("ABX");
     }
 
     @Test
     void mostFrequent_gives_up_on_a_tie() {
         // Un depart au hasard figerait un choix arbitraire dans tous les fichiers a venir.
-        List<String> files = List.of("001-2601-Voo.pdf", "002-2602-Telenet.pdf");
+        List<String> files = List.of("001-2601-Zoo.pdf", "002-2602-Ondes.pdf");
         assertThat(AliasGenerator.mostFrequentFromFileNames(files)).isNull();
     }
 

@@ -43,7 +43,7 @@ public class RecurringExpense {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Ce que la depense est, en clair: "Loyer bureau", "Frais bancaires BNP". */
+    /** Ce que la depense est, en clair: "Loyer bureau", "Frais bancaires". */
     @NotBlank
     @Column(nullable = false)
     private String label;

@@ -60,8 +60,8 @@ public class FileAdoptionService {
         int filesScanned = 0;
         int unnamed = 0;
 
-        // Un numero peut etre porte par plusieurs fichiers (110-1-Amazon.pdf,
-        // 110-2-Amazon.pdf...). On regroupe d'abord pour detecter ces cas.
+        // Un numero peut etre porte par plusieurs fichiers (110-1-Boutique.pdf,
+        // 110-2-Boutique.pdf...). On regroupe d'abord pour detecter ces cas.
         Map<Key, List<Path>> byKey = new LinkedHashMap<>();
 
         for (Integer year : invoiceRepository.findDistinctYears()) {

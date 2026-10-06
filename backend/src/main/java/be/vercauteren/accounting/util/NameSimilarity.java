@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * Rapprochement de noms de fournisseurs saisis a la main dans l'Excel, ou la meme
- * societe apparait sous plusieurs orthographes ("Ag Insurance" et "AG Assurance",
- * "Schievelat" et "Skievelat").
+ * societe apparait sous plusieurs orthographes ("Ab Insurance" et "AB Assurance",
+ * "Schoravela" et "Skoravela").
  *
  * <p>Sert a proposer des candidats a la fusion, jamais a fusionner d'office: deux
  * noms proches peuvent designer deux societes distinctes, et seul l'humain tranche.

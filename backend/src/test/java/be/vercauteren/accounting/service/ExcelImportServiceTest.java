@@ -91,21 +91,21 @@ class ExcelImportServiceTest {
 	@Test
 	void supplierKeyIgnoresCaseAndSpaces() {
 		// Les variantes relevees dans le facturier doivent designer une seule fiche
-		assertThat(ExcelImportService.normaliseSupplierKey("Mobile Viking"))
-			.isEqualTo(ExcelImportService.normaliseSupplierKey("MobileViking"))
-			.isEqualTo(ExcelImportService.normaliseSupplierKey("Mobile viking"));
-		assertThat(ExcelImportService.normaliseSupplierKey("Oliver James"))
-			.isEqualTo(ExcelImportService.normaliseSupplierKey("OliverJames"));
-		assertThat(ExcelImportService.normaliseSupplierKey(" 7 ici "))
-			.isEqualTo(ExcelImportService.normaliseSupplierKey("7Ici"));
-		assertThat(ExcelImportService.normaliseSupplierKey("Pasta Fresca"))
-			.isEqualTo(ExcelImportService.normaliseSupplierKey("PastaFresca"));
+		assertThat(ExcelImportService.normaliseSupplierKey("Mobile Nova"))
+			.isEqualTo(ExcelImportService.normaliseSupplierKey("MobileNova"))
+			.isEqualTo(ExcelImportService.normaliseSupplierKey("Mobile nova"));
+		assertThat(ExcelImportService.normaliseSupplierKey("Acme Conseil"))
+			.isEqualTo(ExcelImportService.normaliseSupplierKey("AcmeConseil"));
+		assertThat(ExcelImportService.normaliseSupplierKey(" 3 tables "))
+			.isEqualTo(ExcelImportService.normaliseSupplierKey("3Tables"));
+		assertThat(ExcelImportService.normaliseSupplierKey("Trattoria Bella"))
+			.isEqualTo(ExcelImportService.normaliseSupplierKey("TrattoriaBella"));
 	}
 
 	@Test
 	void supplierKeyStillSeparatesDifferentNames() {
-		assertThat(ExcelImportService.normaliseSupplierKey("Acerta"))
-			.isNotEqualTo(ExcelImportService.normaliseSupplierKey("Acerta Group"));
+		assertThat(ExcelImportService.normaliseSupplierKey("Socialis"))
+			.isNotEqualTo(ExcelImportService.normaliseSupplierKey("Socialis Group"));
 	}
 
 	@Test

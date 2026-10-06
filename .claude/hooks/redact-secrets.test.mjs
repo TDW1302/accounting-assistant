@@ -77,7 +77,7 @@ test('IBANs and card numbers are redacted only when their checksum is valid', ()
   assert.equal(r(j('BE68 5390 ', '0754 7035')), j('BE68 5390 ', '0754 7035'));
   assert.equal(r(j('4111 1111 ', '1111 1112')), j('4111 1111 ', '1111 1112'));
   assert.equal(r('created at 1759780000123'), 'created at 1759780000123'); // a timestamp
-  assert.equal(r('0403.258.197'), '0403.258.197'); // a Belgian enterprise number
+  assert.equal(r('0123.456.749'), '0123.456.749'); // a Belgian enterprise number
 });
 
 test('test sources keep their fake credentials but not real token formats', () => {

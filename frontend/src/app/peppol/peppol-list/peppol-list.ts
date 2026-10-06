@@ -86,7 +86,7 @@ export class PeppolList implements OnInit {
     this.importComment = '';
   }
 
-  /** A supplier with a default scope (DKV monthly, Vanbrada yearly...) pre-fills the field. */
+  /** A supplier with a default scope (a monthly insurance, a yearly licence...) pre-fills the field. */
   onImportSupplierChange(): void {
     const scope = this.supplierDefaultScope(this.importSupplierId);
     if (scope) {

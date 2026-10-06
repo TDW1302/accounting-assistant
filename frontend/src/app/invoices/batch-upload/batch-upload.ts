@@ -43,7 +43,7 @@ export class BatchUpload implements OnInit {
 
   readonly dateScopes = DATE_SCOPES;
 
-  /** Les defauts du fournisseur (DKV mensuel, Vanbrada annuel, recu par Peppol...). */
+  /** Les defauts du fournisseur (une assurance mensuelle, une licence annuelle, recu par Peppol...). */
   applySupplierDefaults(item: BatchInvoiceItem): void {
     const supplier = this.suppliers().find(s => s.id === item.supplierId);
     if (!supplier) return;

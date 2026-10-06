@@ -32,7 +32,7 @@
 
 ## Infrastructure
 - Current NAS: Synology DS218play (ARM, 1GB RAM, no Docker) — too limited
-- Planned NAS: Ugreen DXP4800 Plus (Intel x86, 8GB DDR5, Docker) — target host
+- Planned NAS: x86, Docker — target host
 - Development and testing done locally for now
 
 ---
@@ -43,7 +43,7 @@
 - Source: C:\Users\verca\OneDrive\Documents\Facturier.xlsx
 - One sheet per year (2024, 2025, 2026), numbering restarts at 1
 - Columns: Number, Supplier, Amount, Reception date, Payment date, Peppol ("V"), Comments
-- Purchase/sale: "Oliver James" invoices = sales, rest = purchases
+- Purchase/sale: invoices of the client = sales, rest = purchases
 - Sales highlighted green (#C6EFCE) on amount cell
 
 ## Original workflow
