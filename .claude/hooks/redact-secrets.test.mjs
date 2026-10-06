@@ -1,4 +1,4 @@
-// Tests for redact-secrets.mjs — run with `node --test .claude/hooks/`.
+// Tests for redact-secrets.mjs — run with `node --test .claude/hooks/*.test.mjs`.
 // Fake secrets are assembled at runtime so that this file never contains one
 // literally (the hook would otherwise redact its own fixtures).
 

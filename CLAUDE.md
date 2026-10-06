@@ -35,7 +35,7 @@ est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 ## Redact secrets (PreToolUse hook, `.claude/hooks/redact-secrets.mjs`)
 - Every tool input is rewritten before it runs: passwords, secrets, API keys, tokens, private keys, URL credentials, IBANs and card numbers become `REDACTED`. Paths, `old_string` and search patterns are never touched.
 - Secrets go through environment variables / `${PLACEHOLDER}` references — those are kept. In test sources only unambiguous token formats are redacted, so fake fixture passwords survive.
-- Tests: `node --test .claude/hooks/`
+- Tests: `node --test .claude/hooks/*.test.mjs`
 
 ## Key rules
 - Currency: always EUR
