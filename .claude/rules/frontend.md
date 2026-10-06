@@ -10,6 +10,7 @@ globs: frontend/**
 - `invoices/` — invoice-list, invoice-form, batch-upload, missing-documents
 - `admin/` — danger-zone, supplier-merge (ADMIN only)
 - `peppol/` — peppol-list
+- `recurring/` — recurring-list, recurring-form, recurring-attach (recurring expense templates)
 - `suppliers/` — supplier-list, supplier-form
 - `auth/` — login, change-password (pas d'écran d'inscription: les comptes sont créés dans `users/`)
 - `users/` — user-list, user-form

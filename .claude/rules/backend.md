@@ -17,7 +17,7 @@ globs: backend/**
 ## Patterns
 - DTOs: Java records, separate Request/Response records
 - Entity↔DTO: `toResponse()` in Service (no external mapper)
-- Errors: `EntityNotFoundException` → 404, `IllegalArgumentException` → 400, `IllegalStateException` → 403, `FalcoApiException` → 502 (via `GlobalExceptionHandler` → `Map<String, String>`)
+- Errors (via `GlobalExceptionHandler` → `Map<String, String>`): `EntityNotFoundException` → 404, `AuthenticationException` → 401, `IllegalArgumentException` / validation failure → 400, `IllegalStateException` → 403, `DataIntegrityViolationException` → 409, `FalcoApiException` → 502, `IOException` / anything else → 500
 - Validation: Jakarta Validation annotations on DTO records
 - Auto-numbering: `findFirstByYearOrderByNumberDesc` + 1, SERIALIZABLE isolation + retry via `TransactionTemplate`
 
@@ -34,14 +34,19 @@ globs: backend/**
 - `GET/POST/PUT/DELETE /api/suppliers/{id}` — supplier CRUD
 - `POST /api/auth/login|logout`, `GET /api/auth/me`, `POST /api/auth/change-password` (pas d'endpoint d'inscription)
 - `GET/POST/PUT/DELETE /api/users/{id}` — user CRUD (ADMIN only)
+- `/api/recurring-expenses` — recurring expense templates, instalment generation, linking existing rows (`/{id}/attachable`, `/options/{invoiceId}`)
+- `/api/inbox` — drop-box file matching; `/api/import` — Excel import
+- `/api/admin` — ADMIN tools (danger zone, supplier duplicates/merge)
+- `GET /api/config` — frontend configuration (session required)
+- This list is a map, not the contract: the controllers are the source of truth
 
 ## Security
 - Session/cookie auth, BCrypt, CSRF cookie-based (`XSRF-TOKEN`)
 - Roles: ADMIN (full), USER (CRUD invoices/suppliers), VIEWER (read-only)
 - Public endpoints: `/api/auth/login` uniquement (`/api/config` demande une session)
-- Rate limiting: 5 attempts/15min/IP on login (`RateLimitFilter` with `@Scheduled` cleanup), IP prise au dernier hop de `X-Forwarded-For`
+- Rate limiting: 5 attempts/15min/IP on login (`RateLimitFilter` with `@Scheduled` cleanup). The IP is `request.getRemoteAddr()`, resolved upstream (nginx `real_ip`, then `server.forward-headers-strategy`). **Never read `X-Forwarded-For` in the application** — its client-supplied part is spoofable
 - Uploads: type MIME + extension déclarés, **et** signature du contenu vérifiée (`FileSignatures`)
-- Password policy: 8+ chars, uppercase, lowercase, digit, special
+- Password policy: 8–128 chars, uppercase, lowercase, digit, special (`PasswordPolicy`)
 - Session timeout: 30 minutes, secure cookie
 - CORS: configured with allowed origins (`application.properties`)
 - SQL wildcards escaped in LIKE queries (explicit escape char `'\\'`)
@@ -49,6 +54,7 @@ globs: backend/**
 ## Configuration (`application.properties`)
 - `app.falco.api-key` (`FALCO_API_KEY`), `app.falco.app-secret` (`FALCO_APP_SECRET`), `app.falco.base-url`
 - `app.anthropic.api-key` (`ANTHROPIC_API_KEY`), `app.anthropic.model`
+- `app.gemini.api-key` (`GEMINI_API_KEY`), `app.gemini.model`
 - `app.upload.directory` — file storage root
 - `app.inbox.directory`, `app.inbox.match-window-days` (défaut 7) — boîte de dépôt et tolérance de date au rapprochement
 - `app.admin.username/password/email` — initial admin

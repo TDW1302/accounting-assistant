@@ -20,7 +20,7 @@ globs: "**/auth*,**/Auth*,**/security*,**/Security*,**/user*,**/User*"
 ## Auth mechanism
 - Session + Cookie (Spring Security), BCrypt, CSRF cookie-based (`XSRF-TOKEN`)
 - Password expiration: 3 months → `PasswordExpirationFilter` returns 403 `{"passwordExpired":true}` on every `/api/**` except change-password, logout and me; the frontend interceptor redirects to change-password
-- Password policy: 8+ chars, uppercase, lowercase, digit, special
+- Password policy (`PasswordPolicy`, mirrored in `frontend/src/app/models/password-policy.ts`): 8–128 chars, uppercase, lowercase, digit, special
 - Session timeout: 30 minutes
 
 ## Roles
@@ -38,4 +38,4 @@ globs: "**/auth*,**/Auth*,**/security*,**/Security*,**/user*,**/User*"
 
 ## Security audit
 - Login/logout logging in `AuthService`
-- Rate limiting: 5 attempts/15min/IP sur le login (`RateLimitFilter`, `@Scheduled` cleanup). L'IP vient du **dernier** élément de `X-Forwarded-For` — celui ajouté par le proxy; les précédents sont fournis par le client
+- Rate limiting: 5 attempts/15min/IP sur le login (`RateLimitFilter`, `@Scheduled` cleanup). L'IP est `request.getRemoteAddr()`, déjà résolue en amont: nginx établit le vrai client (`real_ip`), puis `server.forward-headers-strategy` l'applique et retire l'en-tête. **Ne jamais lire `X-Forwarded-For` dans l'application**: la partie que le client fournit est falsifiable et contournerait la limite

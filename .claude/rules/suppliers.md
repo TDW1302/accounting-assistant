@@ -8,15 +8,15 @@ globs: "**/supplier*,**/Supplier*"
 | Field | Type | Description |
 |---|---|---|
 | id | Long | Auto-generated PK |
-| name | String | Official name (e.g. "P&Partners", "Cafe de la poste") |
-| alias | String (nullable) | Short name for file naming (e.g. "PPartners", "CafeDeLaPoste") |
+| name | String | Official name (e.g. "K&Associes", "Le café du marché") |
+| alias | String (nullable) | Short name for file naming (e.g. "KAssocies", "LeCafeDuMarche") |
 | enterpriseNumber | String (nullable) | BCE enterprise number (format 0XXX.XXX.XXX) |
 | category | Enum ExpenseCategory (nullable) | Expense category |
-| defaultDateScope | Enum DateScope (nullable) | Default date scope for new invoices (DKV monthly, Vanbrada yearly...) |
+| defaultDateScope | Enum DateScope (nullable) | Default date scope for new invoices (a monthly insurance, a yearly licence...) |
 | defaultPeppol | boolean (not null) | Pre-checks "reçu via Peppol" on new invoices |
 
 ## Rules
-- Oliver James is the only current client, but the app should support multiple clients in the future
+- There is a single client today, but the app should support multiple clients in the future. Never write real client or supplier names in the repository (it is public): use fictitious ones in tests, comments and examples
 - Same party can be supplier in one invoice and client in another — role determined by invoice type (PURCHASE/SALE)
 - Alias is used in generated filenames
 - Enterprise number used for matching during AI extraction and Peppol import (digits-only normalization)
