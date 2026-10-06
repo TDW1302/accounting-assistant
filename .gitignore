@@ -18,9 +18,17 @@ frontend/public/opencv/
 # IDE
 .idea/
 
-# Claude Code local settings
-.claude/
+# Claude Code: only the shared settings and the test-judge hook are committed
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/test-judge/
+.claude/test-judge/state/
 
 # Uploads
 uploads/
 data/
+
+# Test reports (read by the test-judge hook)
+frontend/coverage/
+frontend/test-results/

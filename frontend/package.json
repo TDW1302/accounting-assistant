@@ -38,6 +38,7 @@
     "@angular/build": "^21.1.4",
     "@angular/cli": "^21.1.4",
     "@angular/compiler-cli": "^21.1.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^30.0.1",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"

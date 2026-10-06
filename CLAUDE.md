@@ -27,6 +27,11 @@ est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
   compile l'etage frontend (`npm ci` puis `ng build`) et ne publie l'image que sur `main`.
   **`ng test` n'est execute nulle part en CI** — les tests frontend se lancent a la main.
 
+## Test judge (Stop hook, `.claude/settings.json`)
+- A session that touched `backend/` or `frontend/` cannot finish until the touched suites ran **after** the last change and pass: `cd backend && ./gradlew test` (JaCoCo), `cd frontend && npx ng test --watch=false` (coverage + JUnit)
+- Test count, skipped count and line/branch coverage are compared to `.claude/test-judge/coverage-baseline.json` (never lower it); a read-only agent judge also rejects weakened tests. Ratchet after a gain: `node .claude/hooks/test-judge.mjs baseline`
+- After 5 refusals in a row the session stops and a report lands in `.claude/test-judge/reports/`
+
 ## Key rules
 - Currency: always EUR
 - Invoice type determines party role (PURCHASE/SALE), not the party itself

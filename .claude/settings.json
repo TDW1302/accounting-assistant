@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/test-judge.mjs\" session-start",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/test-judge.mjs\" snapshot",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/test-judge.mjs\" stop",
+            "timeout": 60,
+            "statusMessage": "Test judge: checking test and coverage reports..."
+          },
+          {
+            "type": "agent",
+            "model": "claude-sonnet-5-5",
+            "timeout": 300,
+            "statusMessage": "Test judge: reviewing the tests...",
+            "prompt": "You are the read-only TEST JUDGE. First Read .claude/hooks/test-judge-agent.md and follow it exactly. Never modify anything. Hook input: $ARGUMENTS"
+          }
+        ]
+      }
+    ]
+  }
+}
