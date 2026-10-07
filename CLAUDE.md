@@ -12,12 +12,16 @@ est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 - **Backend**: Java 25, Spring Boot 4.1.1, Gradle 9.8.0 — package `be.vercauteren.accounting`
   - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, TwelveMonkeys imageio-webp 3.15.3 (lecture WebP pour la conversion en PDF), Apache POI 5.5.1, Anthropic Java SDK 2.68.0, Google GenAI SDK 1.75.0
   - Tests: Testcontainers 1.21.4 sur `postgres:17-alpine` — un demon Docker doit tourner
-- **Frontend**: Angular 21 (`^21.1.0`, resolu en 21.2.x), TypeScript `~5.9.2`, SCSS, npm 11.8.0
-  - `ng test` tourne sur vitest 4: `@angular/build@21` declare `peerOptional vitest@"^4.0.8"`.
-    vitest 5 suppose Angular 22 et TypeScript 6 — les trois se montent ensemble ou pas du tout.
+- **Frontend**: Angular 22 (`^22.2.1`), TypeScript `~6.0.3`, SCSS, npm 11.8.0
+  - `ng test` tourne sur vitest 5 (`@vitest/coverage-v8` 5). `@angular/build@22` exige
+    `typescript >=6.0 <6.1`: Angular, TypeScript et vitest se montent ensemble — une PR
+    Dependabot qui n'en bouge qu'un echoue sur `npm ci` (`ERESOLVE`).
+  - Le passage de vitest 4 a 5 a change le decompte des branches (741 → 657, memes 13
+    non couvertes): un pourcentage qui bouge a une montee d'outillage n'est pas forcement
+    une perte de tests.
 - **Images**: `node:26-alpine` pour l'etage frontend, `eclipse-temurin:25-jdk-alpine`
   puis `25-jre-alpine` pour le backend. Le Node local n'a pas a coller a celui de
-  l'image: seul le build de production passe par elle.
+  l'image, mais l'Angular CLI 22 exige Node ≥ 22.22.3, ≥ 24.15.0 ou ≥ 26.
 - **DB**: PostgreSQL 17 (propre conteneur), connexion via `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`
 - **Schema**: possede par Flyway (`backend/src/main/resources/db/migration`), Hibernate est
   `ddl-auto=validate` — jamais `update`. Toute evolution passe par un nouveau `Vn__*.sql`.

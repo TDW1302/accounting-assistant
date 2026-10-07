@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RecurringExpenseService } from '../../services/recurring-expense.service';
@@ -10,6 +10,7 @@ import { PERIODICITIES, RecurringExpenseRequest } from '../../models/recurring-e
   selector: 'app-recurring-form',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './recurring-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './recurring-form.scss'
 })
 export class RecurringForm implements OnInit {

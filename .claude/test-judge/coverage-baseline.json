@@ -6,9 +6,9 @@
     "branchPct": 90.42
   },
   "frontend": {
-    "tests": 117,
+    "tests": 118,
     "skipped": 0,
     "linePct": 100,
-    "branchPct": 98.25
+    "branchPct": 98.48
   }
 }

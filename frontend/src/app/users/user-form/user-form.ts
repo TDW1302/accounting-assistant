@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { UserService } from '../../services/user.service';
@@ -14,6 +14,7 @@ import {
   selector: 'app-user-form',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './user-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './user-form.scss'
 })
 export class UserForm implements OnInit {

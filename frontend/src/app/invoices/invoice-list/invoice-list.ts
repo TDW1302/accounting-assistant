@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +15,7 @@ import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier 
   selector: 'app-invoice-list',
   imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './invoice-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './invoice-list.scss'
 })
 export class InvoiceList implements OnInit {

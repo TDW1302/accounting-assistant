@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { SupplierService } from '../../services/supplier.service';
@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier } from '../../models
   selector: 'app-supplier-merge',
   imports: [FormsModule],
   templateUrl: './supplier-merge.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './supplier-merge.scss'
 })
 export class SupplierMerge implements OnInit {

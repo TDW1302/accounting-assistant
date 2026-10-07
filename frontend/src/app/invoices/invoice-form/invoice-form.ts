@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { switchMap } from 'rxjs';
@@ -11,6 +11,7 @@ import { InvoiceRequest, DATE_SCOPES, INVOICE_SERIES, InvoiceSeries, InvoiceType
   selector: 'app-invoice-form',
   imports: [ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './invoice-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './invoice-form.scss'
 })
 export class InvoiceForm implements OnInit {

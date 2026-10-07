@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
@@ -9,6 +9,7 @@ import { DATE_SCOPES } from '../../models/invoice.model';
   selector: 'app-supplier-form',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './supplier-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './supplier-form.scss'
 })
 export class SupplierForm implements OnInit {

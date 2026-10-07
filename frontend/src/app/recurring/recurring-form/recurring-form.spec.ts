@@ -69,6 +69,17 @@ describe('RecurringForm', () => {
     expect(navigate).toHaveBeenCalledWith(['/recurring']);
   });
 
+  it('sends the VAT breakdown as numbers, and no total when it is left blank', () => {
+    const form = setup();
+    form.form.patchValue({ label: 'Loyer', supplierId: '1', amountIncVat: null, amountExVat: '661.16', vatAmount: '138.84' });
+
+    form.save();
+
+    expect(recurring['create']).toHaveBeenCalledWith(
+      expect.objectContaining({ amountIncVat: null, amountExVat: 661.16, vatAmount: 138.84 }),
+    );
+  });
+
   it('edits a model without entries freely', () => {
     const form = setup({ id: '3' });
 

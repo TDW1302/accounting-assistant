@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { from, mergeMap, concatMap, of, catchError, concat, map, EMPTY } from 'rxjs';
@@ -23,6 +23,7 @@ interface SupplierGroup {
   selector: 'app-batch-upload',
   imports: [FormsModule, RouterLink],
   templateUrl: './batch-upload.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './batch-upload.scss',
 })
 export class BatchUpload implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +13,7 @@ import { RecurringExpense, RecurringLinkOption } from '../../models/recurring-ex
   selector: 'app-missing-documents',
   imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './missing-documents.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './missing-documents.scss'
 })
 export class MissingDocuments implements OnInit {

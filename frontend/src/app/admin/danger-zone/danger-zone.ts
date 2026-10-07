@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { AdminStats } from '../../models/admin.model';
@@ -9,6 +9,7 @@ const CONFIRM_WORD = 'SUPPRIMER';
   selector: 'app-danger-zone',
   imports: [FormsModule],
   templateUrl: './danger-zone.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './danger-zone.scss'
 })
 export class DangerZone implements OnInit {

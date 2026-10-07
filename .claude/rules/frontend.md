@@ -2,7 +2,7 @@
 globs: frontend/**
 ---
 
-# Frontend — Angular 21, Standalone Components
+# Frontend — Angular 22, Standalone Components
 
 ## Structure (`frontend/src/app/`)
 - `models/` — TypeScript interfaces + types (Invoice, Supplier, InvoiceRequest...)

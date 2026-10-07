@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { User } from '../../models/user.model';
@@ -8,6 +8,7 @@ import { UserService } from '../../services/user.service';
   selector: 'app-user-list',
   imports: [RouterLink, DatePipe],
   templateUrl: './user-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './user-list.scss'
 })
 export class UserList implements OnInit {

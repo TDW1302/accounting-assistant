@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PeppolService } from '../../services/peppol.service';
@@ -11,6 +11,7 @@ import { DateScope, InvoiceType } from '../../models/invoice.model';
   selector: 'app-peppol-list',
   imports: [CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './peppol-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './peppol-list.scss'
 })
 export class PeppolList implements OnInit {

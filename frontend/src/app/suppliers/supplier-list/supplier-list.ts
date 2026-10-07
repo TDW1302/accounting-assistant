@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../../services/supplier.service';
@@ -11,6 +11,7 @@ export type SupplierSortColumn = 'name' | 'alias' | 'category';
   selector: 'app-supplier-list',
   imports: [RouterLink, FormsModule],
   templateUrl: './supplier-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './supplier-list.scss'
 })
 export class SupplierList implements OnInit {

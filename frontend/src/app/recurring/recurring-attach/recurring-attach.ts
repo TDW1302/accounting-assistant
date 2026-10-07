@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,6 +16,7 @@ import {
   selector: 'app-recurring-attach',
   imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './recurring-attach.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './recurring-attach.scss'
 })
 export class RecurringAttach implements OnInit {
