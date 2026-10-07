@@ -9,7 +9,7 @@ Les numeros ci-dessous sont indicatifs et datent vite. La source de verite est
 par Dependabot ne doit pas etre refusee au motif qu'elle ne correspond pas a ce qui
 est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 
-- **Backend**: Java 25, Spring Boot 4.1.1, Gradle 9.7.1 — package `be.vercauteren.accounting`
+- **Backend**: Java 25, Spring Boot 4.1.1, Gradle 9.8.0 — package `be.vercauteren.accounting`
   - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, TwelveMonkeys imageio-webp 3.15.3 (lecture WebP pour la conversion en PDF), Apache POI 5.5.1, Anthropic Java SDK 2.68.0, Google GenAI SDK 1.75.0
   - Tests: Testcontainers 1.21.4 sur `postgres:17-alpine` — un demon Docker doit tourner
 - **Frontend**: Angular 21 (`^21.1.0`, resolu en 21.2.x), TypeScript `~5.9.2`, SCSS, npm 11.8.0
