@@ -6,11 +6,10 @@ import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, ExpenseCategory, Supplier, SupplierRequest } from '../../models/supplier.model';
 import { InvoiceRequest, DATE_SCOPES, INVOICE_SERIES, InvoiceSeries, InvoiceType } from '../../models/invoice.model';
-import { DocumentScanner } from '../document-scanner/document-scanner';
 
 @Component({
   selector: 'app-invoice-form',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DocumentScanner],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './invoice-form.html',
   styleUrl: './invoice-form.scss'
 })
@@ -30,8 +29,6 @@ export class InvoiceForm implements OnInit {
   autoExtract = true;
   extracting = false;
   submitted = false;
-  showScanner = false;
-  scannerImageFile: File | null = null;
   linkToNumber: number | null = null;
 
   unmatchedSupplierName: string | null = null;
@@ -149,36 +146,14 @@ export class InvoiceForm implements OnInit {
     }
   }
 
+  /**
+   * PDF ou photo, le fichier part tel quel a l'extraction: l'IA lit les images
+   * en vision, et le serveur les convertit en PDF au depot.
+   */
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-
-    if (file && this.isImageFile(file)) {
-      this.scannerImageFile = file;
-      this.showScanner = true;
-      // Reset input so the same file can be re-selected
-      input.value = '';
-      return;
-    }
-
-    this.selectedFile = file;
+    this.selectedFile = input.files?.[0] ?? null;
     this.triggerExtraction();
-  }
-
-  onDocumentScanned(blob: Blob): void {
-    this.selectedFile = new File([blob], 'scanned-document.jpg', { type: 'image/jpeg' });
-    this.showScanner = false;
-    this.scannerImageFile = null;
-    this.triggerExtraction();
-  }
-
-  onScannerCancelled(): void {
-    this.showScanner = false;
-    this.scannerImageFile = null;
-  }
-
-  private isImageFile(file: File): boolean {
-    return file.type.startsWith('image/');
   }
 
   private triggerExtraction(): void {

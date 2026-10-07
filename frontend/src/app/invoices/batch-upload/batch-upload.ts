@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { from, mergeMap, concatMap, of, catchError, EMPTY } from 'rxjs';
+import { from, mergeMap, concatMap, of, catchError, concat, map, EMPTY } from 'rxjs';
 import { InvoiceService } from '../../services/invoice.service';
 import { SupplierService } from '../../services/supplier.service';
 import { Supplier } from '../../models/supplier.model';
@@ -270,8 +270,10 @@ export class BatchUpload implements OnInit {
         if (group.isSubGroup) {
           return this.createSubInvoiceGroup(group.items);
         } else {
+          // Le bilan compte des booleens: l'objet resultat, toujours vrai,
+          // faisait passer chaque echec pour une creation.
           return from(group.items).pipe(
-            concatMap(item => this.createSingleInvoice(item, null)),
+            concatMap(item => this.createSingleInvoice(item, null).pipe(map(r => r.success))),
           );
         }
       }),
@@ -347,27 +349,25 @@ export class BatchUpload implements OnInit {
   }
 
   private createSubInvoiceGroup(items: BatchInvoiceItem[]) {
-    // First item: create normal invoice
+    // First item: create normal invoice. Its own outcome is emitted too, sinon
+    // la premiere facture du groupe manquait au bilan et a la progression.
     return this.createSingleInvoice(items[0], null).pipe(
       concatMap(result => {
+        const rest = items.slice(1);
         if (!result.success) {
           // If first fails, mark remaining as error too
-          return from(items.slice(1)).pipe(
-            mergeMap(item => {
+          return concat(of(false), from(rest).pipe(
+            map(item => {
               item.status = 'error';
               this.files.update(f => [...f]);
-              return of(false);
+              return false;
             }),
-          );
+          ));
         }
-        const linkToNumber = result.number;
         // Remaining items: create as sub-invoices
-        if (items.length === 1) return EMPTY;
-        return from(items.slice(1)).pipe(
-          concatMap(item => this.createSingleInvoice(item, linkToNumber).pipe(
-            mergeMap(r => of(r.success)),
-          )),
-        );
+        return concat(of(true), from(rest).pipe(
+          concatMap(item => this.createSingleInvoice(item, result.number).pipe(map(r => r.success))),
+        ));
       }),
     );
   }

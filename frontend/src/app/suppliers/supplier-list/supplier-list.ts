@@ -37,7 +37,11 @@ export class SupplierList implements OnInit {
     const column = this.sortColumn();
     const direction = this.sortAsc() ? 1 : -1;
     return [...this.suppliers()].sort((a, b) => {
-      const compared = this.compare(this.sortValue(a, column), this.sortValue(b, column));
+      const left = this.sortValue(a, column);
+      const right = this.sortValue(b, column);
+      // Hors du sens de tri: inverser le resultat remontait les vides en tete.
+      if (!left !== !right) return left ? -1 : 1;
+      const compared = this.compare(left, right);
       return compared !== 0 ? compared * direction : this.compare(a.name, b.name);
     });
   });
