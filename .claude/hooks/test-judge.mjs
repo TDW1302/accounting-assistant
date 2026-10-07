@@ -5,7 +5,9 @@
 //   session-start  (SessionStart)  remember the commit the session started from
 //   snapshot       (PostToolUse)   write the diff under review for the agent judge
 //   stop           (Stop)          check the test/coverage reports, count refusals
-//   baseline       (manual)        ratchet the coverage baseline up to the reports
+//   guard          (PreToolUse)    deny any tool call that would lower the baseline
+//   baseline       (manual)        ratchet the coverage baseline up to the reports;
+//                                  --allow-decrease needs the owner's typed confirmation
 //
 // A stop is refused when a test suite touched by the session was not run after
 // the last change, fails, lost tests, gained skipped tests, or lost coverage
@@ -455,10 +457,14 @@ function stop() {
   });
 }
 
-// Ratchets the baseline up to the current reports; never lowers it unless --allow-decrease.
-function baseline() {
+// Ratchets the baseline up to the current reports. Lowering it (--allow-decrease)
+// needs the owner: a human typing a confirmation in an interactive terminal,
+// outside Claude Code. An agent run is refused here, by the `guard` hook, and at
+// Stop, where any relaxation against the session's base commit is a refusal.
+async function baseline() {
   const allowDecrease = process.argv.includes('--allow-decrease');
   const current = readJson(baselinePath, {});
+  const decreases = [];
   for (const [name, measure] of Object.entries(MEASURE)) {
     const m = measure();
     if (m.error || m.failures + m.errors > 0) {
@@ -467,28 +473,88 @@ function baseline() {
     }
     const next = { tests: m.tests, skipped: m.skipped, linePct: m.linePct, branchPct: m.branchPct };
     const prev = current[name];
-    if (prev && !allowDecrease) {
-      next.tests = Math.max(next.tests, prev.tests);
-      next.skipped = Math.min(next.skipped, prev.skipped);
-      next.linePct = Math.max(next.linePct, prev.linePct);
-      next.branchPct = Math.max(next.branchPct, prev.branchPct);
+    if (prev) {
+      for (const key of ['tests', 'linePct', 'branchPct', 'skipped']) {
+        const weaker = key === 'skipped' ? next[key] > prev[key] : next[key] < prev[key];
+        if (weaker) decreases.push(`${name}.${key}: ${prev[key]} -> ${next[key]}`);
+      }
+      if (!allowDecrease) {
+        next.tests = Math.max(next.tests, prev.tests);
+        next.skipped = Math.min(next.skipped, prev.skipped);
+        next.linePct = Math.max(next.linePct, prev.linePct);
+        next.branchPct = Math.max(next.branchPct, prev.branchPct);
+      }
     }
     current[name] = next;
   }
+  if (allowDecrease) await confirmDecrease(decreases); // even with nothing to lower: the flag alone needs the owner
   writeJson(baselinePath, current);
   console.log(JSON.stringify(current, null, 2));
 }
 
-const commands = { 'session-start': sessionStart, snapshot, stop, baseline };
+const CONFIRMATION = 'lower the baseline';
+
+async function confirmDecrease(decreases) {
+  const refuse = (why) => {
+    console.error(`--allow-decrease refused: ${why}\nThe owner must run this command in their own terminal.`);
+    process.exit(1);
+  };
+  if (process.env.CLAUDECODE || process.env.CLAUDE_CODE_ENTRYPOINT) refuse('started from Claude Code');
+  if (!process.stdin.isTTY || !process.stdout.isTTY) refuse('not an interactive terminal');
+
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  console.log(decreases.length
+    ? `This LOWERS the coverage baseline:\n${decreases.map((d) => `  ${d}`).join('\n')}`
+    : 'Nothing would be lowered right now, but --allow-decrease still needs your confirmation.');
+  const answer = await rl.question(`Type "${CONFIRMATION}" to confirm: `);
+  rl.close();
+  if (answer.trim() !== CONFIRMATION) refuse('confirmation not given');
+}
+
+// PreToolUse: no tool call may lower the baseline — neither the flag above nor a
+// direct edit of the baseline file. Ratcheting up goes through `baseline`.
+function guard() {
+  const input = readStdin();
+  const tool = input.tool_input ?? {};
+  const target = String(tool.file_path ?? tool.notebook_path ?? '').replace(/\\/g, '/');
+  const command = String(tool.command ?? '');
+  const baselineFile = /coverage-baseline\.json/;
+  const shellWrite = /(>|\btee\b|sed\s+-i|\b(cp|mv|rm|del|Remove-Item|Set-Content|Out-File|Copy-Item|Move-Item)\b|writeFile|-replace|truncate)/i;
+
+  let reason = null;
+  // An invocation of the baseline command with the flag (a mere mention, in a commit message, is fine).
+  if (/test-judge(\.mjs)?["']?\s+baseline\b[^\n;&|]*--allow-decrease/.test(command)) {
+    reason = '`--allow-decrease` lowers the coverage baseline: only the owner may run it, in their own terminal.';
+  } else if (baselineFile.test(target)) {
+    reason = `${baselineRel} is not edited by hand: ratchet it with \`node .claude/hooks/test-judge.mjs baseline\`.`;
+  } else if (baselineFile.test(command) && shellWrite.test(command)) {
+    reason = `This command would write ${baselineRel}: ratchet it with \`node .claude/hooks/test-judge.mjs baseline\`.`;
+  }
+  if (!reason) return;
+  emit({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: `Test judge: ${reason} Never lower the baseline to make the work pass — add tests instead.`,
+    },
+  });
+}
+
+const commands = { 'session-start': sessionStart, snapshot, stop, baseline, guard };
 const command = commands[process.argv[2]];
 if (!command) {
   console.error(`usage: test-judge.mjs ${Object.keys(commands).join('|')}`);
   process.exit(1);
 }
 try {
-  command();
+  await command();
 } catch (e) {
   // Fail closed: a broken judge must not silently wave the work through.
+  if (process.argv[2] === 'guard') {
+    emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `Test judge guard failed, the call was blocked: ${e.message}` } });
+    process.exit(0);
+  }
   if (process.argv[2] !== 'stop') throw e;
   const input = { session_id: currentSessionId };
   haltWithReport(input, readJson(statePath(currentSessionId), {}), 'the hook crashed', `**Error:**\n\n\`\`\`\n${e.stack || e}\n\`\`\``);
