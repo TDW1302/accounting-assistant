@@ -31,7 +31,10 @@ public final class MimeTypes {
 
     /** Type MIME du fichier, ou null si l'extension n'est pas prise en charge. */
     public static String forFileName(String fileName) {
-        return BY_EXTENSION.get(extensionOf(fileName));
+        // Map.ofEntries refuse une cle nulle: sans ce test, un fichier sans
+        // extension depose dans l'inbox faisait echouer tout le scan.
+        String extension = extensionOf(fileName);
+        return extension == null ? null : BY_EXTENSION.get(extension);
     }
 
     public static boolean isSupported(String fileName) {

@@ -19,6 +19,13 @@ public class ImageToPdfService {
     private static final float A4_WIDTH = PDRectangle.A4.getWidth();
     private static final float A4_HEIGHT = PDRectangle.A4.getHeight();
 
+    static {
+        // Le registre ImageIO ne parcourt que le classpath systeme. Dans le jar
+        // executable Spring Boot, le plugin WebP vit sous BOOT-INF/lib: il faut
+        // demander un nouveau balayage, qui passe par le class loader du contexte.
+        ImageIO.scanForPlugins();
+    }
+
     public byte[] convertToPdf(MultipartFile file) throws IOException {
         BufferedImage image = ImageIO.read(file.getInputStream());
         if (image == null) {
