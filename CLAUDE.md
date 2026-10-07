@@ -31,6 +31,8 @@ est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
 - A session that touched `backend/` or `frontend/` cannot finish until the touched suites ran **after** the last change and pass: `cd backend && ./gradlew test` (JaCoCo), `cd frontend && npx ng test --watch=false` (coverage + JUnit)
 - Test count, skipped count and line/branch coverage are compared to `.claude/test-judge/coverage-baseline.json` (never lower it); a read-only agent judge also rejects weakened tests. Ratchet after a gain: `node .claude/hooks/test-judge.mjs baseline`
 - After 5 refusals in a row the session stops and a report lands in `.claude/test-judge/reports/`
+- Lowering the baseline is the owner's call only: the `--allow-decrease` flag asks for a typed confirmation in an interactive terminal and refuses to run from Claude Code. The `guard` PreToolUse hook denies any tool call that passes it or writes the baseline file directly.
+- The judge checks the session's own checkout (the git root of its `cwd`), so parallel sessions belong in separate worktrees.
 
 ## Redact secrets (PreToolUse hook, `.claude/hooks/redact-secrets.mjs`)
 - Every tool input is rewritten before it runs: passwords, secrets, API keys, tokens, private keys, URL credentials, IBANs and card numbers become `REDACTED`. Paths, `old_string` and search patterns are never touched.
