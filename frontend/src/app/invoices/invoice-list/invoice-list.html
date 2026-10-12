@@ -1,0 +1,206 @@
+<div class="page-header">
+  <h1>Factures</h1>
+  <div class="header-actions">
+    @if (!searchActive) {
+      <select [ngModel]="selectedYear()" (ngModelChange)="onYearChange($event)">
+        @for (y of years; track y) {
+          <option [ngValue]="y">{{ y }}</option>
+        }
+      </select>
+    }
+    <select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)">
+      <option [ngValue]="null">-- Achats et ventes --</option>
+      <option [ngValue]="'PURCHASE'">Achats</option>
+      <option [ngValue]="'SALE'">Ventes</option>
+    </select>
+    <select [ngModel]="seriesFilter()" (ngModelChange)="seriesFilter.set($event)">
+      <option [ngValue]="null">-- Factures et dépenses --</option>
+      <option [ngValue]="'INVOICE'">Factures</option>
+      <option [ngValue]="'EXPENSE'">Dépenses sans document</option>
+    </select>
+    @if (searchActive) {
+      <span class="badge-search">Recherche active</span>
+      <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
+    }
+    @if (authService.hasRole('ADMIN')) {
+      <button class="btn btn-secondary" (click)="scanInbox()" [disabled]="scanning()">
+        {{ scanning() ? 'Scan en cours...' : 'Scanner boîte de dépôt' }}
+      </button>
+      <button class="btn btn-secondary" (click)="excelInput.click()" [disabled]="importing()">
+        {{ importing() ? 'Import en cours...' : 'Importer Excel' }}
+      </button>
+      <input #excelInput type="file" accept=".xlsx" hidden (change)="onImportFile($event)">
+    }
+    <a class="btn" routerLink="/invoices/batch">Upload multiple</a>
+    <a class="btn btn-primary" routerLink="/invoices/new">+ Nouvelle facture</a>
+  </div>
+</div>
+
+@if (scanResult(); as scan) {
+  <div class="import-result">
+    <strong>Scan terminé :</strong>
+    {{ scan.filesProcessed }} fichiers traités,
+    {{ scan.matched }} rattachés,
+    {{ scan.created }} créés,
+    {{ scan.errors }} erreurs.
+    @if (scan.errorFiles.length > 0) {
+      <ul>
+        @for (f of scan.errorFiles; track f) {
+          <li>{{ f }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="scanResult.set(null)">Fermer</button>
+  </div>
+}
+
+@if (importResult(); as result) {
+  <div class="import-result">
+    <strong>Import terminé :</strong>
+    {{ result.invoicesImported }} factures importées,
+    {{ result.suppliersCreated }} fournisseurs créés,
+    {{ result.rowsSkipped }} lignes ignorées.
+    @if (result.warnings.length > 0) {
+      <ul>
+        @for (w of result.warnings; track w) {
+          <li>{{ w }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="importResult.set(null)">Fermer</button>
+  </div>
+}
+
+<div class="search-bar">
+  <div class="search-row">
+    <div class="search-field">
+      <label>Mot-clé</label>
+      <input type="text" [(ngModel)]="keyword" placeholder="Commentaire, fournisseur, détail..."
+             (keyup.enter)="search()">
+    </div>
+    <div class="search-field">
+      <label>Fournisseur</label>
+      <select [(ngModel)]="supplierId">
+        <option [ngValue]="null">-- Tous --</option>
+        @for (s of suppliers(); track s.id) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="search-field">
+      <label>Montant min</label>
+      <input type="number" [(ngModel)]="amountMin" step="0.01" placeholder="Min">
+    </div>
+    <div class="search-field">
+      <label>Montant max</label>
+      <input type="number" [(ngModel)]="amountMax" step="0.01" placeholder="Max">
+    </div>
+    <div class="search-field">
+      <label>Date du</label>
+      <input type="date" [(ngModel)]="dateFrom">
+    </div>
+    <div class="search-field">
+      <label>Date au</label>
+      <input type="date" [(ngModel)]="dateTo">
+    </div>
+    <div class="search-field">
+      <label>Catégorie</label>
+      <select [(ngModel)]="category">
+        <option [ngValue]="null">-- Toutes --</option>
+        @for (c of categories; track c.value) {
+          <option [ngValue]="c.value">{{ c.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+  <div class="search-actions">
+    <button class="btn btn-primary" (click)="search()">Rechercher</button>
+    <button class="btn btn-secondary" (click)="resetSearch()">Réinitialiser</button>
+  </div>
+</div>
+
+<div class="table-wrapper">
+<table>
+  <thead>
+    <tr>
+      @if (searchActive) {
+        <th>Année</th>
+      }
+      <th class="sortable" (click)="toggleSort()">N°{{ sortIndicator() }}</th>
+      <th>Type</th>
+      <th>Fournisseur</th>
+      <th class="text-right">TTC</th>
+      <th class="text-right">HTVA</th>
+      <th class="text-right">TVA</th>
+      <th>Date réception</th>
+      <th>Date paiement</th>
+      <th>Peppol</th>
+      <th>Nom fichier</th>
+      <th>Commentaire</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (inv of displayedInvoices(); track inv.id) {
+      <tr class="row-detail" [class.sale-row]="inv.type === 'SALE'"
+          (dblclick)="openInvoice(inv)" title="Double-cliquez pour ouvrir la facture">
+        @if (searchActive) {
+          <td>{{ inv.year }}</td>
+        }
+        <td [title]="inv.series === 'EXPENSE' ? 'Dépense contractuelle, aucun document attendu' : ''">
+          {{ formatNumber(inv) }}
+        </td>
+        <td>{{ inv.type === 'PURCHASE' ? 'Achat' : 'Vente' }}</td>
+        <td>{{ inv.supplier.name }}</td>
+        <td class="text-right">{{ inv.amountIncVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ inv.amountExVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ inv.vatAmount | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td>{{ inv.receptionDate | date:'dd/MM/yyyy' }}</td>
+        <td>{{ inv.paymentDate | date:'dd/MM/yyyy' }}</td>
+        <td>{{ inv.peppol ? 'V' : '' }}</td>
+        <td class="mono">
+          @if (inv.series === 'EXPENSE' && !inv.filePath) {
+            <span class="no-document">Sans document</span>
+          } @else {
+            {{ inv.generatedFileName }}
+          }
+        </td>
+        <td>@if (inv.recurringExpenseLabel) {<span class="recurring-label">{{ inv.recurringExpenseLabel }}</span>}{{ inv.recurringExpenseLabel && inv.comment ? ' — ' : '' }}{{ inv.comment }}</td>
+        <td class="actions" (dblclick)="$event.stopPropagation()">
+          <a class="btn btn-sm" [routerLink]="['/invoices', inv.id, 'edit']">Modifier</a>
+          @if (inv.series === 'INVOICE') {
+            <a class="btn btn-sm btn-secondary" [routerLink]="['/invoices/new']"
+               [queryParams]="{ linkTo: inv.number, year: inv.year }">Sous-facture</a>
+          }
+          <button class="btn btn-sm btn-danger" (click)="deleteInvoice(inv)">Supprimer</button>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td [attr.colspan]="searchActive ? 13 : 12" class="empty">
+          @if ((typeFilter() !== null || seriesFilter() !== null) && invoices().length > 0) {
+            Aucune ligne ne correspond à ces filtres.
+          } @else if (searchActive) {
+            Aucune facture trouvée pour cette recherche.
+          } @else {
+            Aucune facture pour {{ selectedYear() }}.
+          }
+        </td>
+      </tr>
+    }
+  </tbody>
+  @if (displayedInvoices().length > 0) {
+    <tfoot>
+      <tr>
+        <td [attr.colspan]="searchActive ? 4 : 3">
+          Total — {{ displayedInvoices().length }} ligne(s)
+        </td>
+        <td class="text-right">{{ totals().incVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ totals().exVat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td class="text-right">{{ totals().vat | currency:'EUR':'symbol':'1.2-2' }}</td>
+        <td colspan="6"></td>
+      </tr>
+    </tfoot>
+  }
+</table>
+</div>

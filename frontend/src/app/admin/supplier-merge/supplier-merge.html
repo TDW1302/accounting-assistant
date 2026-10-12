@@ -1,0 +1,147 @@
+<div class="page-header">
+  <h1>Fusionner deux fournisseurs</h1>
+</div>
+
+@if (error()) {
+  <div class="alert-error">{{ error() }}</div>
+}
+
+@if (lastMerge(); as m) {
+  <div class="merge-result">
+    <strong>Fusion effectuée :</strong>
+    « {{ m.removedName }} » a été fusionné dans « {{ m.keptName }} »,
+    {{ m.invoicesReassigned }} facture(s) transférée(s).
+    @if (m.fieldsFilled.length > 0) {
+      <ul>
+        @for (f of m.fieldsFilled; track f) {
+          <li>Champ complété : {{ f }}</li>
+        }
+      </ul>
+    }
+    <button class="btn btn-sm" (click)="lastMerge.set(null)">Fermer</button>
+  </div>
+}
+
+<section class="merge-card">
+  <h2>Choisir les deux fiches</h2>
+  <p class="hint">
+    La fiche conservée garde ses propres valeurs ; les champs vides sont complétés par l'autre fiche.
+    Les factures de la fiche supprimée sont transférées vers la fiche conservée.
+  </p>
+
+  <div class="compare">
+    <div class="compare-side">
+      <label for="keepId">Fiche à conserver</label>
+      <select id="keepId" [ngModel]="keepId()" (ngModelChange)="keepId.set($event)">
+        <option [ngValue]="null">-- Sélectionner --</option>
+        @for (s of suppliers(); track s.id) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+
+      @if (keepSupplier(); as s) {
+        <dl class="card">
+          <dt>Nom</dt><dd>{{ s.name }}</dd>
+          <dt>N° entreprise</dt><dd class="mono">{{ s.enterpriseNumber || '—' }}</dd>
+          <dt>Alias</dt><dd class="mono">{{ s.alias || '—' }}</dd>
+          <dt>Catégorie</dt><dd>{{ categoryLabel(s.category) || '—' }}</dd>
+        </dl>
+      }
+    </div>
+
+    <div class="compare-arrow" aria-hidden="true">←</div>
+
+    <div class="compare-side">
+      <label for="removeId">Fiche à supprimer</label>
+      <select id="removeId" [ngModel]="removeId()" (ngModelChange)="removeId.set($event)">
+        <option [ngValue]="null">-- Sélectionner --</option>
+        @for (s of suppliers(); track s.id) {
+          <option [ngValue]="s.id">{{ s.name }}</option>
+        }
+      </select>
+
+      @if (removeSupplier(); as s) {
+        <dl class="card card-remove">
+          <dt>Nom</dt><dd>{{ s.name }}</dd>
+          <dt>N° entreprise</dt><dd class="mono">{{ s.enterpriseNumber || '—' }}</dd>
+          <dt>Alias</dt><dd class="mono">{{ s.alias || '—' }}</dd>
+          <dt>Catégorie</dt><dd>{{ categoryLabel(s.category) || '—' }}</dd>
+        </dl>
+      }
+    </div>
+  </div>
+
+  @if (keepId() !== null && keepId() === removeId()) {
+    <p class="warn">Les deux fiches sélectionnées sont identiques.</p>
+  }
+
+  <button class="btn btn-danger" [disabled]="!canMerge() || busy()" (click)="merge()">
+    {{ busy() ? 'Fusion en cours...' : 'Fusionner' }}
+  </button>
+</section>
+
+<section class="merge-card">
+  <div class="card-header">
+    <h2>Doublons détectés</h2>
+    <button class="btn btn-sm" (click)="loadDuplicates()" [disabled]="loadingDuplicates()">
+      {{ loadingDuplicates() ? 'Analyse...' : 'Relancer l\'analyse' }}
+    </button>
+  </div>
+
+  @if (duplicates(); as d) {
+    <p class="hint">{{ d.suppliers }} fiches analysées, {{ d.pairs.length }} couple(s) rapproché(s).</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Rapprochement</th>
+            <th>Fiche A</th>
+            <th>N° entreprise A</th>
+            <th>Fiche B</th>
+            <th>N° entreprise B</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of d.pairs; track p.left.id + '-' + p.right.id) {
+            <tr>
+              <td>{{ p.reason }}</td>
+              <td>
+                {{ p.left.name }}
+                <span class="counts">{{ p.left.invoiceCount }} facture(s), {{ p.left.documentCount }} document(s)</span>
+              </td>
+              <td class="mono">{{ p.left.enterpriseNumber || '—' }}</td>
+              <td>
+                {{ p.right.name }}
+                <span class="counts">{{ p.right.invoiceCount }} facture(s), {{ p.right.documentCount }} document(s)</span>
+              </td>
+              <td class="mono">{{ p.right.enterpriseNumber || '—' }}</td>
+              <td class="actions">
+                <button class="btn btn-sm" (click)="selectPair(p.left.id, p.right.id)">Conserver A</button>
+                <button class="btn btn-sm" (click)="selectPair(p.right.id, p.left.id)">Conserver B</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="empty">Aucun doublon détecté.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (d.withoutDocument.length > 0) {
+      <details class="without-document">
+        <summary>{{ d.withoutDocument.length }} fiche(s) sans aucun document</summary>
+        <ul>
+          @for (w of d.withoutDocument; track w) {
+            <li>{{ w }}</li>
+          }
+        </ul>
+      </details>
+    }
+  } @else if (loadingDuplicates()) {
+    <p class="hint">Analyse en cours...</p>
+  }
+</section>

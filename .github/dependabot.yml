@@ -1,0 +1,35 @@
+# Les mises a jour de dependances etaient jusqu'ici entierement manuelles, donc
+# decouvertes par un audit ponctuel. Dependabot ouvre desormais les PR lui-meme;
+# la soumission du graphe Gradle (cf. workflows/docker.yml) lui donne en plus les
+# dependances transitives, qui n'apparaissent dans aucun fichier du depot.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      spring:
+        patterns:
+          - "org.springframework*"
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns:
+          - "@angular*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

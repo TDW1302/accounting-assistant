@@ -1,0 +1,62 @@
+<div class="page-header">
+  <h1>Zone de danger</h1>
+</div>
+
+@if (error()) {
+  <div class="alert-error">{{ error() }}</div>
+}
+
+@if (stats(); as s) {
+  <section class="danger-card">
+    <h2>Supprimer les factures d'une année</h2>
+    <p>
+      Supprime définitivement toutes les factures (et leurs fichiers) de l'année choisie.
+      La numérotation de cette année repartira automatiquement de 1.
+    </p>
+
+    @if (s.years.length > 0) {
+      <div class="form-group">
+        <label for="year">Année</label>
+        <select id="year" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
+          @for (y of s.years; track y.year) {
+            <option [value]="y.year">{{ y.year }} ({{ y.invoiceCount }} facture(s))</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="invoiceConfirm">Tapez "{{ confirmWord }}" pour confirmer</label>
+        <input id="invoiceConfirm" type="text" [ngModel]="invoiceConfirmText()"
+               (ngModelChange)="invoiceConfirmText.set($event)" autocomplete="off">
+      </div>
+
+      <button class="btn btn-danger"
+              [disabled]="busy() || invoiceConfirmText() !== confirmWord"
+              (click)="deleteInvoicesForYear()">
+        Supprimer toutes les factures de {{ selectedYear() }}
+      </button>
+    } @else {
+      <p class="empty">Aucune facture en base.</p>
+    }
+  </section>
+
+  <section class="danger-card">
+    <h2>Supprimer tous les fournisseurs/clients</h2>
+    <p>
+      Supprime définitivement tous les fournisseurs et clients ({{ s.supplierCount }} au total).
+      Impossible tant que des factures existent encore en base.
+    </p>
+
+    <div class="form-group">
+      <label for="supplierConfirm">Tapez "{{ confirmWord }}" pour confirmer</label>
+      <input id="supplierConfirm" type="text" [ngModel]="supplierConfirmText()"
+             (ngModelChange)="supplierConfirmText.set($event)" autocomplete="off">
+    </div>
+
+    <button class="btn btn-danger"
+            [disabled]="busy() || supplierConfirmText() !== confirmWord || s.supplierCount === 0"
+            (click)="deleteAllSuppliers()">
+      Supprimer tous les fournisseurs/clients
+    </button>
+  </section>
+}

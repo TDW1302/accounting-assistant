@@ -1,0 +1,34 @@
+# Backend
+backend/build/
+backend/data/
+backend/.gradle/
+backend.tgz
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+
+# Claude Code: shared settings, rules and the test-judge hook are committed
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/rules/
+!.claude/test-judge/
+.claude/test-judge/state/
+
+# Uploads
+uploads/
+data/
+
+# Test reports (read by the test-judge hook)
+frontend/coverage/
+frontend/test-results/

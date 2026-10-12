@@ -1,0 +1,61 @@
+# accounting-assistant
+
+Personal accounting app replacing an Excel file for managing purchase/sale invoices.
+
+## Stack
+Les numeros ci-dessous sont indicatifs et datent vite. La source de verite est
+`backend/build.gradle`, `frontend/package.json`, le `Dockerfile` et
+`.github/workflows/docker.yml` — jamais ce fichier. Une montee de version proposee
+par Dependabot ne doit pas etre refusee au motif qu'elle ne correspond pas a ce qui
+est ecrit ici: c'est ce fichier qu'on met a jour ensuite.
+
+- **Backend**: Java 25, Spring Boot 4.1.1, Gradle 9.8.0 — package `be.vercauteren.accounting`
+  - Dependencies: Spring Web, Spring Data JPA, Spring Security, PostgreSQL driver, Flyway, Lombok, Validation, Apache PDFBox 3.0.8, TwelveMonkeys imageio-webp 3.15.3 (lecture WebP pour la conversion en PDF), Apache POI 5.5.1, Anthropic Java SDK 2.68.0, Google GenAI SDK 1.75.0
+  - Tests: Testcontainers 1.21.4 sur `postgres:17-alpine` — un demon Docker doit tourner
+- **Frontend**: Angular 22 (`^22.2.1`), TypeScript `~6.0.3`, SCSS, npm 11.8.0
+  - `ng test` tourne sur vitest 5 (`@vitest/coverage-v8` 5). `@angular/build@22` exige
+    `typescript >=6.0 <6.1`: Angular, TypeScript et vitest se montent ensemble — une PR
+    Dependabot qui n'en bouge qu'un echoue sur `npm ci` (`ERESOLVE`).
+  - Le passage de vitest 4 a 5 a change le decompte des branches (741 → 657, memes 13
+    non couvertes): un pourcentage qui bouge a une montee d'outillage n'est pas forcement
+    une perte de tests.
+- **Images**: `node:26-alpine` pour l'etage frontend, `eclipse-temurin:25-jdk-alpine`
+  puis `25-jre-alpine` pour le backend. Le Node local n'a pas a coller a celui de
+  l'image, mais l'Angular CLI 22 exige Node ≥ 22.22.3, ≥ 24.15.0 ou ≥ 26.
+- **DB**: PostgreSQL 17 (propre conteneur), connexion via `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`
+- **Schema**: possede par Flyway (`backend/src/main/resources/db/migration`), Hibernate est
+  `ddl-auto=validate` — jamais `update`. Toute evolution passe par un nouveau `Vn__*.sql`.
+- **CI**: `.github/workflows/docker.yml`. Le job `test` lance `./gradlew test`, donc
+  `AccountingAssistantApplicationTests` sur un PostgreSQL Testcontainers: c'est la que les
+  migrations Flyway sont reellement jouees et confrontees aux entites JPA. Le job `build`
+  compile l'etage frontend (`npm ci` puis `ng build`) et ne publie l'image que sur `main`.
+  **`ng test` n'est execute nulle part en CI** — les tests frontend se lancent a la main.
+
+## Test judge (Stop hook, `.claude/settings.json`)
+- A session that touched `backend/` or `frontend/` cannot finish until the touched suites ran **after** the last change and pass: `cd backend && ./gradlew test` (JaCoCo), `cd frontend && npx ng test --watch=false` (coverage + JUnit)
+- Test count, skipped count and line/branch coverage are compared to `.claude/test-judge/coverage-baseline.json` (never lower it); a read-only agent judge also rejects weakened tests. Ratchet after a gain: `node .claude/hooks/test-judge.mjs baseline`
+- After 5 refusals in a row the session stops and a report lands in `.claude/test-judge/reports/`
+- Lowering the baseline is the owner's call only: the `--allow-decrease` flag asks for a typed confirmation in an interactive terminal and refuses to run from Claude Code. The `guard` PreToolUse hook denies any tool call that passes it or writes the baseline file directly.
+- The judge checks the session's own checkout (the git root of its `cwd`), so parallel sessions belong in separate worktrees.
+
+## Redact secrets (PreToolUse hook, `.claude/hooks/redact-secrets.mjs`)
+- Every tool input is rewritten before it runs: passwords, secrets, API keys, tokens, private keys, URL credentials, IBANs and card numbers become `REDACTED`. Paths, `old_string` and search patterns are never touched.
+- Secrets go through environment variables / `${PLACEHOLDER}` references — those are kept. In test sources only unambiguous token formats are redacted, so fake fixture passwords survive.
+- Tests: `node --test .claude/hooks/*.test.mjs`
+
+## Key rules
+- Currency: always EUR
+- Invoice type determines party role (PURCHASE/SALE), not the party itself
+- Purchases and sales share a single sequential numbering per year (restarts at 1)
+- Two numbering series, each with its own yearly counter: `INVOICE` (documented invoices, 001…) and `EXPENSE` (contractual expenses with no document, D001…). A row's series is fixed at creation.
+- Recurring expenses (rent, bank fees, PLCI) are templates; their instalments are only written to the ledger when the user generates them — never automatically
+- An existing documentless row (an Excel-imported rent) can be linked to a template without being renumbered: linking only records the period it covers. Any series may carry the link; `scope_date` is what identifies an instalment.
+- One instalment per period. When a period is already taken, "Remplacer" deletes the occupant and links the chosen row — but **only if the occupant was generated by the template** (`source = RECURRING`, no document). A hand-entered or Excel-imported row is a record of its own and is never deleted by a link operation; the refusal says so.
+- Detaching clears the link and **leaves the row in the ledger**, period and amount included. Detach is not delete.
+- Linking works from both ends: `/{id}/attachable` lists the rows a template can take, `/options/{invoiceId}` the templates a row can join (used by the "Documents manquants" screen). The period a row covers is always computed server-side — normalising a date to its period start depends on the periodicity, and a second implementation would drift.
+- DTOs are Java records; entity↔DTO mapping via `toResponse()` in Service
+- Frontend: standalone components, signals, lazy-loaded routes, locale `fr-BE`
+- No Spring profiles currently; session/cookie auth with CSRF (XSRF-TOKEN)
+
+## Contextual rules
+Details split into `.claude/rules/` — loaded automatically by glob match.

@@ -1,0 +1,116 @@
+name: Build and push Docker image
+
+on:
+  push:
+    branches: [main]
+  # Sans cela une PR n'a aucune verification: les montees de version proposees
+  # par Dependabot arrivaient sans le moindre signal, et il fallait les essayer
+  # une a une en local pour savoir lesquelles tenaient.
+  pull_request:
+    branches: [main]
+
+# Le job build redeclare ce dont il a besoin; les autres n'ecrivent rien.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      # Testcontainers demarre un PostgreSQL jetable pour verifier que les
+      # migrations Flyway produisent un schema conforme aux entites JPA
+      # (ddl-auto=validate). Docker est preinstalle sur les runners ubuntu.
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report
+          path: backend/build/reports/tests/test/
+          retention-days: 7
+
+  # Le seul endroit ou ng test tourne. L'etage frontend-build ne fait que npm ci puis
+  # ng build: sans ce job, une montee de version du runner de test ressortait verte sans
+  # qu'un seul test frontend ait ete execute — le meme faux vert que la PR node 24 -> 26.
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --watch=false
+
+  # Publie le graphe complet des dependances Gradle, transitives comprises, pour
+  # que Dependabot puisse alerter dessus: build.gradle ne nomme que les directes,
+  # et c'est dans les transitives (Tomcat, Jackson, okhttp...) que les CVE tombent.
+  # Le lockfile npm, lui, est deja analyse sans rien publier.
+  dependency-graph:
+    # Le graphe decrit l'etat de main, pas celui d'une proposition.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/dependency-submission@v6
+        with:
+          build-root-directory: backend
+
+  # Construire n'est pas publier. Le job tourne aussi sur les PR, parce que c'est
+  # ici et nulle part ailleurs que le frontend est reellement compile — npm ci puis
+  # npm run build, dans l'etage frontend-build. Seule la publication au registre
+  # est reservee a main.
+  build:
+    needs: [test, frontend-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Inutile sur une PR, ou rien n'est pousse: le jeton d'une PR Dependabot est
+      # de toute facon en lecture seule et l'authentification echouerait.
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' }}
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: |
+            ghcr.io/tdw1302/accounting-assistant:latest
+            ghcr.io/tdw1302/accounting-assistant:${{ github.sha }}

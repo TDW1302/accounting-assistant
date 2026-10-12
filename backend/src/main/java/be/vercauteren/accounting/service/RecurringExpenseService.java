@@ -1,0 +1,572 @@
+package be.vercauteren.accounting.service;
+
+import be.vercauteren.accounting.dto.AttachableInvoice;
+import be.vercauteren.accounting.dto.InvoiceRequest;
+import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.dto.RecurringAttachBatchRequest;
+import be.vercauteren.accounting.dto.RecurringAttachBatchResponse;
+import be.vercauteren.accounting.dto.RecurringAttachRequest;
+import be.vercauteren.accounting.dto.RecurringExpenseRequest;
+import be.vercauteren.accounting.dto.RecurringExpenseResponse;
+import be.vercauteren.accounting.dto.RecurringGenerationRequest;
+import be.vercauteren.accounting.dto.RecurringGenerationResponse;
+import be.vercauteren.accounting.dto.RecurringLinkOption;
+import be.vercauteren.accounting.dto.RecurringOccurrence;
+import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
+import be.vercauteren.accounting.entity.InvoiceSource;
+import be.vercauteren.accounting.entity.InvoiceType;
+import be.vercauteren.accounting.entity.RecurringExpense;
+import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.entity.User;
+import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.repository.RecurringExpenseRepository;
+import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Depenses contractuelles recurrentes: loyer, frais bancaires, PLCI. Rien n'est
+ * inscrit au facturier sans un geste explicite — le service propose les echeances
+ * echues, l'utilisateur retient celles qu'il veut. C'est volontaire: un montant
+ * indexe ou un contrat termine produirait sinon des lignes fausses en silence,
+ * et consommerait des numeros sans qu'on l'ait voulu.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RecurringExpenseService {
+
+    private final RecurringExpenseRepository recurringExpenseRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final SupplierService supplierService;
+    private final InvoiceService invoiceService;
+    private final AuthService authService;
+    private final FileNameGenerator fileNameGenerator;
+
+    public List<RecurringExpenseResponse> findAll() {
+        return recurringExpenseRepository.findAllOrderByActiveThenLabel().stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public RecurringExpenseResponse findById(Long id) {
+        return toResponse(getOrThrow(id));
+    }
+
+    @Transactional
+    public RecurringExpenseResponse create(RecurringExpenseRequest request) {
+        User author = authService.getCurrentUser().orElseThrow(() -> new IllegalStateException(
+            "Cannot create a recurring expense without an author: no authenticated user"));
+        Supplier supplier = supplierService.getOrThrow(request.supplierId());
+        validatePeriod(request);
+
+        RecurringExpense expense = RecurringExpense.builder()
+            .label(request.label())
+            .supplier(supplier)
+            .amountIncVat(request.amountIncVat())
+            .amountExVat(request.amountExVat())
+            .vatAmount(request.vatAmount())
+            .periodicity(request.periodicity())
+            .startDate(request.startDate())
+            .endDate(request.endDate())
+            .paidOnDueDate(Boolean.TRUE.equals(request.paidOnDueDate()))
+            .comment(request.comment())
+            .fileDetail(request.fileDetail())
+            .active(Boolean.TRUE.equals(request.active()))
+            .createdBy(author)
+            .build();
+
+        return toResponse(recurringExpenseRepository.save(expense));
+    }
+
+    @Transactional
+    public RecurringExpenseResponse update(Long id, RecurringExpenseRequest request) {
+        RecurringExpense expense = getOrThrow(id);
+        Supplier supplier = supplierService.getOrThrow(request.supplierId());
+        validatePeriod(request);
+
+        // Le rythme et la date de debut definissent l'identite des echeances: les
+        // changer apres coup ferait glisser les periodes et rendrait orphelines
+        // celles deja inscrites, qu'on ne pourrait plus reconnaitre comme generees.
+        if (invoiceRepository.existsByRecurringExpenseId(id)) {
+            if (expense.getPeriodicity() != request.periodicity()) {
+                throw new IllegalArgumentException(
+                    "Cannot change the periodicity of a recurring expense that already has entries. "
+                        + "Close this one (end date) and create a new model instead.");
+            }
+            if (!expense.getStartDate().equals(request.startDate())) {
+                throw new IllegalArgumentException(
+                    "Cannot change the start date of a recurring expense that already has entries. "
+                        + "Close this one (end date) and create a new model instead.");
+            }
+        }
+
+        expense.setLabel(request.label());
+        expense.setSupplier(supplier);
+        // Une indexation ne touche que les echeances a venir: celles deja inscrites
+        // portent le montant qui etait du a l'epoque.
+        expense.setAmountIncVat(request.amountIncVat());
+        expense.setAmountExVat(request.amountExVat());
+        expense.setVatAmount(request.vatAmount());
+        expense.setPeriodicity(request.periodicity());
+        expense.setStartDate(request.startDate());
+        expense.setEndDate(request.endDate());
+        expense.setPaidOnDueDate(Boolean.TRUE.equals(request.paidOnDueDate()));
+        expense.setComment(request.comment());
+        expense.setFileDetail(request.fileDetail());
+        expense.setActive(Boolean.TRUE.equals(request.active()));
+
+        return toResponse(recurringExpenseRepository.save(expense));
+    }
+
+    /**
+     * Supprimable tant qu'aucune echeance n'a ete inscrite. Au-dela, la fin de
+     * contrat se dit avec une date de fin ou en desactivant le modele: supprimer
+     * couperait le lien des lignes deja au facturier avec ce qui les explique.
+     */
+    @Transactional
+    public void delete(Long id) {
+        RecurringExpense expense = getOrThrow(id);
+        if (invoiceRepository.existsByRecurringExpenseId(id)) {
+            throw new IllegalArgumentException(
+                "Cannot delete a recurring expense that already produced entries. "
+                    + "Set an end date or deactivate it instead.");
+        }
+        recurringExpenseRepository.delete(expense);
+    }
+
+    /** Toutes les echeances echues au {@code upTo} donne et pas encore inscrites. */
+    public List<RecurringOccurrence> findDue(LocalDate upTo) {
+        LocalDate horizon = upTo != null ? upTo : LocalDate.now();
+        return recurringExpenseRepository.findByActiveTrueOrderByLabelAsc().stream()
+            .flatMap(expense -> pendingOccurrences(expense, horizon).stream())
+            .sorted(Comparator.comparing(RecurringOccurrence::periodStart)
+                .thenComparing(RecurringOccurrence::label))
+            .toList();
+    }
+
+    /**
+     * Inscrit les echeances retenues. Chacune est reverifiee contre ce que son
+     * modele doit reellement: la liste vient du client, elle ne fait pas foi.
+     *
+     * <p>Volontairement hors transaction: {@link InvoiceService#create} ouvre la
+     * sienne, en SERIALIZABLE, pour attribuer le numero sans collision. L'englober
+     * ici la ferait rejoindre la notre — isolation perdue, et un conflit de numero
+     * condamnerait toute la generation au lieu d'etre rejoue. Chaque echeance est
+     * donc validee pour elle-meme, et la reponse dit ce qui est passe et ce qui non.
+     */
+    public RecurringGenerationResponse generate(RecurringGenerationRequest request, LocalDate upTo) {
+        LocalDate horizon = upTo != null ? upTo : LocalDate.now();
+        User author = authService.getCurrentUser().orElseThrow(() -> new IllegalStateException(
+            "Cannot generate entries without an author: no authenticated user"));
+
+        // Chronologique: les numeros D001, D002... doivent suivre les periodes,
+        // pas l'ordre dans lequel le client a coche les cases.
+        List<RecurringGenerationRequest.OccurrenceRef> refs = request.occurrences().stream()
+            .distinct()
+            .sorted(Comparator.comparing(RecurringGenerationRequest.OccurrenceRef::periodStart)
+                .thenComparing(RecurringGenerationRequest.OccurrenceRef::recurringExpenseId))
+            .toList();
+
+        List<InvoiceResponse> created = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+
+        for (RecurringGenerationRequest.OccurrenceRef ref : refs) {
+            RecurringExpense expense = recurringExpenseRepository.findById(ref.recurringExpenseId())
+                .orElse(null);
+            if (expense == null) {
+                skipped.add("Modele " + ref.recurringExpenseId() + " introuvable");
+                continue;
+            }
+
+            RecurringOccurrence due = pendingOccurrences(expense, horizon).stream()
+                .filter(occurrence -> occurrence.periodStart().equals(ref.periodStart()))
+                .findFirst()
+                .orElse(null);
+            if (due == null) {
+                skipped.add(expense.getLabel() + " "
+                    + RecurringSchedule.periodLabel(expense.getPeriodicity(), ref.periodStart())
+                    + " : deja inscrite ou hors periode du modele");
+                continue;
+            }
+
+            created.add(createOccurrence(expense, due, author));
+        }
+
+        return new RecurringGenerationResponse(created, skipped);
+    }
+
+    private InvoiceResponse createOccurrence(RecurringExpense expense, RecurringOccurrence due, User author) {
+        InvoiceRequest request = new InvoiceRequest(
+            null,
+            InvoiceSeries.EXPENSE,
+            due.year(),
+            InvoiceType.PURCHASE,
+            expense.getSupplier().getId(),
+            expense.getAmountIncVat(),
+            expense.getAmountExVat(),
+            expense.getVatAmount(),
+            due.dueDate(),
+            expense.isPaidOnDueDate() ? due.dueDate() : null,
+            false,
+            expense.getComment(),
+            expense.getPeriodicity().toDateScope(),
+            due.periodStart(),
+            expense.getFileDetail(),
+            null,
+            null
+        );
+        return invoiceService.create(request, InvoiceSource.RECURRING, author, expense);
+    }
+
+    /** Echeances dues au {@code horizon} dont la periode n'est pas deja inscrite. */
+    private List<RecurringOccurrence> pendingOccurrences(RecurringExpense expense, LocalDate horizon) {
+        Set<LocalDate> generated = linkedPeriods(expense);
+
+        List<RecurringOccurrence> pending = new ArrayList<>();
+        List<LocalDate> due = RecurringSchedule.dueDates(
+            expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), horizon);
+        for (LocalDate dueDate : due) {
+            LocalDate periodStart = RecurringSchedule.periodStart(expense.getPeriodicity(), dueDate);
+            if (generated.contains(periodStart)) {
+                continue;
+            }
+            pending.add(new RecurringOccurrence(
+                expense.getId(),
+                expense.getLabel(),
+                expense.getSupplier().getName(),
+                periodStart,
+                RecurringSchedule.periodLabel(expense.getPeriodicity(), periodStart),
+                dueDate,
+                dueDate.getYear(),
+                expense.getAmountIncVat()
+            ));
+        }
+        return pending;
+    }
+
+    /** Les lignes du facturier qui couvrent une periode de ce modele. */
+    public List<InvoiceResponse> findEntries(Long id) {
+        getOrThrow(id);
+        return invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(id).stream()
+            .map(invoiceService::toLinkedResponse)
+            .toList();
+    }
+
+    /**
+     * Les lignes du meme fournisseur, sans document, qu'on peut encore rattacher.
+     * Chacune vient avec la periode que sa date de reception designe: pour un
+     * loyer repris de l'Excel, c'est presque toujours la bonne, et le client
+     * n'a plus qu'a confirmer.
+     */
+    public List<AttachableInvoice> findAttachable(Long id) {
+        RecurringExpense expense = getOrThrow(id);
+        Map<LocalDate, Invoice> taken = coverage(expense);
+
+        return invoiceRepository
+            .findBySupplierIdAndFilePathIsNullAndRecurringExpenseIsNullOrderByYearDescNumberDesc(
+                expense.getSupplier().getId())
+            .stream()
+            .map(invoice -> toAttachable(expense, invoice, taken))
+            .toList();
+    }
+
+    private AttachableInvoice toAttachable(RecurringExpense expense, Invoice invoice,
+                                            Map<LocalDate, Invoice> taken) {
+        LocalDate suggested = RecurringSchedule.periodStart(
+            expense.getPeriodicity(), invoice.getReceptionDate());
+        boolean withinModel = RecurringSchedule
+            .dueDateFor(expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), suggested)
+            .isPresent();
+
+        String issue = null;
+        AttachableInvoice.ConflictingEntry conflict = null;
+        if (!withinModel) {
+            issue = "Hors des periodes du modele";
+        } else if (taken.containsKey(suggested)) {
+            issue = "Periode deja couverte";
+            conflict = toConflict(taken.get(suggested));
+        }
+
+        return new AttachableInvoice(
+            invoice.getId(),
+            fileNameGenerator.formatNumber(invoice),
+            invoice.getYear(),
+            invoice.getReceptionDate(),
+            invoice.getAmountIncVat(),
+            invoice.getComment(),
+            suggested,
+            RecurringSchedule.periodLabel(expense.getPeriodicity(), suggested),
+            issue == null,
+            issue,
+            conflict
+        );
+    }
+
+    private AttachableInvoice.ConflictingEntry toConflict(Invoice occupant) {
+        String refusal = null;
+        if (occupant.getSource() != InvoiceSource.RECURRING) {
+            refusal = "Cette ligne n'a pas ete engendree par le modele: elle a ete saisie ou "
+                + "rattachee a la main, et la supprimer depasse ce qu'un rattachement doit faire.";
+        } else if (occupant.getFilePath() != null) {
+            refusal = "Un document a ete depose sur cette echeance depuis sa generation.";
+        }
+
+        return new AttachableInvoice.ConflictingEntry(
+            occupant.getId(),
+            fileNameGenerator.formatNumber(occupant),
+            occupant.getYear(),
+            occupant.getAmountIncVat(),
+            occupant.getReceptionDate(),
+            refusal == null,
+            refusal
+        );
+    }
+
+    /**
+     * Les modeles actifs qui peuvent accueillir cette ligne. Sert a rattacher
+     * depuis la facture — l'ecran des documents manquants — la ou findAttachable
+     * part du modele. Un modele d'un autre fournisseur n'est pas propose: le
+     * rattachement l'exige, et le montrer pour le refuser ensuite n'aide pas.
+     */
+    public List<RecurringLinkOption> findLinkOptions(Long invoiceId) {
+        Invoice invoice = invoiceService.getForRecurringLink(invoiceId);
+        if (invoice.getRecurringExpense() != null || invoice.getFilePath() != null) {
+            return List.of();
+        }
+
+        return recurringExpenseRepository.findByActiveTrueOrderByLabelAsc().stream()
+            .filter(expense -> expense.getSupplier().getId().equals(invoice.getSupplier().getId()))
+            .map(expense -> toLinkOption(expense, invoice))
+            .toList();
+    }
+
+    private RecurringLinkOption toLinkOption(RecurringExpense expense, Invoice invoice) {
+        LocalDate suggested = RecurringSchedule.periodStart(
+            expense.getPeriodicity(), invoice.getReceptionDate());
+        boolean withinModel = RecurringSchedule
+            .dueDateFor(expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), suggested)
+            .isPresent();
+
+        String issue = null;
+        AttachableInvoice.ConflictingEntry conflict = null;
+        Map<LocalDate, Invoice> taken = coverage(expense);
+        if (!withinModel) {
+            issue = "Hors des periodes du modele";
+        } else if (taken.containsKey(suggested)) {
+            issue = "Periode deja couverte";
+            conflict = toConflict(taken.get(suggested));
+        }
+
+        return new RecurringLinkOption(
+            expense.getId(),
+            expense.getLabel(),
+            expense.getPeriodicity(),
+            suggested,
+            RecurringSchedule.periodLabel(expense.getPeriodicity(), suggested),
+            issue == null,
+            issue,
+            conflict
+        );
+    }
+
+    /**
+     * Rattache une ligne existante. Ni le numero ni l'annee ne bougent: la ligne
+     * reste ou l'historique l'a mise. Seule la periode couverte est inscrite,
+     * puisque c'est elle qui dit au modele que ce mois-la est deja au facturier.
+     */
+    @Transactional
+    public InvoiceResponse attach(Long id, RecurringAttachRequest request) {
+        RecurringExpense expense = getOrThrow(id);
+        Invoice invoice = invoiceService.getForRecurringLink(request.invoiceId());
+
+        if (invoice.getRecurringExpense() != null) {
+            throw new IllegalArgumentException("This entry is already linked to a recurring expense");
+        }
+        if (invoice.getFilePath() != null) {
+            throw new IllegalArgumentException(
+                "Cannot link an entry that already carries a document: linking sets its period, "
+                    + "which would rename the stored file");
+        }
+        if (!invoice.getSupplier().getId().equals(expense.getSupplier().getId())) {
+            throw new IllegalArgumentException(
+                "The entry and the recurring expense must share the same supplier");
+        }
+
+        Optional<LocalDate> dueDate = RecurringSchedule.dueDateFor(
+            expense.getStartDate(), expense.getEndDate(), expense.getPeriodicity(), request.periodStart());
+        if (dueDate.isEmpty()) {
+            throw new IllegalArgumentException(
+                "The requested period is not one of this recurring expense's periods");
+        }
+        if (linkedPeriods(expense).contains(request.periodStart())) {
+            throw new IllegalArgumentException("This period is already covered by another entry");
+        }
+
+        invoice.setRecurringExpense(expense);
+        invoice.setDateScope(expense.getPeriodicity().toDateScope());
+        invoice.setScopeDate(request.periodStart());
+
+        log.info("Linked invoice {} to recurring expense '{}' for period {}",
+            invoice.getId(), expense.getLabel(), request.periodStart());
+
+        return invoiceService.saveLinked(invoice);
+    }
+
+    /**
+     * Rattache plusieurs lignes en une passe, pour la reprise d'un historique
+     * entier. Les conflits ne sont pas resolus ici: une periode deja occupee est
+     * ecartee et dite dans la reponse. Supprimer en lot des lignes du facturier
+     * pour faire de la place demande un geste par ligne — c'est {@link #replace}.
+     */
+    @Transactional
+    public RecurringAttachBatchResponse attachAll(Long id, RecurringAttachBatchRequest request) {
+        RecurringExpense expense = getOrThrow(id);
+
+        // Chronologique: l'ordre dans lequel le client a coche ne doit pas decider
+        // lesquelles passent quand deux lignes visent la meme periode.
+        List<RecurringAttachRequest> ordered = request.attachments().stream()
+            .distinct()
+            .sorted(Comparator.comparing(RecurringAttachRequest::periodStart)
+                .thenComparing(RecurringAttachRequest::invoiceId))
+            .toList();
+
+        List<InvoiceResponse> attached = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+
+        for (RecurringAttachRequest attachment : ordered) {
+            String label = RecurringSchedule.periodLabel(expense.getPeriodicity(), attachment.periodStart());
+            try {
+                // Rattraper le refus d'une ligne sans perdre les autres n'est sans
+                // danger que parce que attach() valide tout avant de modifier quoi
+                // que ce soit: un refus ne laisse aucune entite salie derriere lui.
+                attached.add(attach(id, attachment));
+            } catch (IllegalArgumentException e) {
+                skipped.add(label + " : " + e.getMessage());
+            }
+        }
+
+        return new RecurringAttachBatchResponse(attached, skipped);
+    }
+
+    /**
+     * Rattache une ligne a la place de l'echeance que le modele avait engendree
+     * pour cette periode, qui est supprimee.
+     *
+     * <p>Reserve aux echeances engendrees. Elles ne sont qu'une projection du
+     * modele et se refont d'un clic, la ou une ligne saisie a la main est un
+     * enregistrement a part entiere: la supprimer au passage d'un rattachement
+     * serait une perte silencieuse, et le refus est explicite.
+     */
+    @Transactional
+    public InvoiceResponse replace(Long id, RecurringAttachRequest request) {
+        RecurringExpense expense = getOrThrow(id);
+
+        Invoice occupant = coverage(expense).get(request.periodStart());
+        if (occupant == null) {
+            throw new IllegalArgumentException(
+                "No entry covers this period: nothing to replace, attach the line instead");
+        }
+        if (occupant.getId().equals(request.invoiceId())) {
+            throw new IllegalArgumentException("This entry already covers that period");
+        }
+
+        AttachableInvoice.ConflictingEntry conflict = toConflict(occupant);
+        if (!conflict.replaceable()) {
+            throw new IllegalArgumentException("Cannot replace entry "
+                + conflict.displayNumber() + ": " + conflict.notReplaceableReason());
+        }
+
+        // Supprimer avant d'ecrire le nouveau lien: l'index unique partiel
+        // uk_invoice_recurring_period porte sur (recurring_expense_id, scope_date),
+        // et les deux lignes visent la meme periode le temps de la bascule.
+        invoiceService.delete(occupant.getId());
+        invoiceRepository.flush();
+
+        log.info("Replaced generated entry {} by invoice {} on recurring expense '{}' for period {}",
+            conflict.displayNumber(), request.invoiceId(), expense.getLabel(), request.periodStart());
+
+        return attach(id, request);
+    }
+
+    /**
+     * Detache une ligne. La portee de date posee au rattachement reste: elle dit
+     * toujours quelle periode la ligne couvre, et la valeur d'avant n'est plus
+     * connue — l'inventer serait pire que la garder.
+     */
+    @Transactional
+    public InvoiceResponse detach(Long invoiceId) {
+        Invoice invoice = invoiceService.getForRecurringLink(invoiceId);
+        if (invoice.getRecurringExpense() == null) {
+            throw new IllegalArgumentException("This entry is not linked to a recurring expense");
+        }
+        invoice.setRecurringExpense(null);
+        return invoiceService.saveLinked(invoice);
+    }
+
+    /** Les periodes deja couvertes par une ligne du facturier, engendree ou rattachee. */
+    private Set<LocalDate> linkedPeriods(RecurringExpense expense) {
+        return new LinkedHashSet<>(coverage(expense).keySet());
+    }
+
+    /**
+     * Qui couvre quoi. La periode seule suffisait a refuser un rattachement; elle
+     * ne suffit pas a l'expliquer, ni a proposer de remplacer la ligne en place.
+     */
+    private Map<LocalDate, Invoice> coverage(RecurringExpense expense) {
+        Map<LocalDate, Invoice> byPeriod = new LinkedHashMap<>();
+        for (Invoice invoice : invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(expense.getId())) {
+            byPeriod.put(invoice.getScopeDate(), invoice);
+        }
+        return byPeriod;
+    }
+
+    private void validatePeriod(RecurringExpenseRequest request) {
+        if (request.endDate() != null && request.endDate().isBefore(request.startDate())) {
+            throw new IllegalArgumentException("End date cannot precede start date");
+        }
+    }
+
+    RecurringExpense getOrThrow(Long id) {
+        return recurringExpenseRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Recurring expense not found: " + id));
+    }
+
+    private RecurringExpenseResponse toResponse(RecurringExpense expense) {
+        List<Invoice> entries = invoiceRepository.findByRecurringExpenseIdOrderByScopeDateAsc(expense.getId());
+        LocalDate lastPeriod = entries.isEmpty() ? null : entries.getLast().getScopeDate();
+
+        return new RecurringExpenseResponse(
+            expense.getId(),
+            expense.getLabel(),
+            supplierService.toResponse(expense.getSupplier()),
+            expense.getAmountIncVat(),
+            expense.getAmountExVat(),
+            expense.getVatAmount(),
+            expense.getPeriodicity(),
+            expense.getStartDate(),
+            expense.getEndDate(),
+            expense.isPaidOnDueDate(),
+            expense.getComment(),
+            expense.getFileDetail(),
+            expense.isActive(),
+            entries.size(),
+            lastPeriod,
+            expense.isActive() ? pendingOccurrences(expense, LocalDate.now()).size() : 0,
+            entries.isEmpty()
+        );
+    }
+}

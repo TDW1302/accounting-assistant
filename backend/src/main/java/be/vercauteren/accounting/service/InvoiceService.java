@@ -1,0 +1,451 @@
+package be.vercauteren.accounting.service;
+
+import be.vercauteren.accounting.dto.InvoiceRequest;
+import be.vercauteren.accounting.dto.InvoiceResponse;
+import be.vercauteren.accounting.entity.ExpenseCategory;
+import be.vercauteren.accounting.entity.Invoice;
+import be.vercauteren.accounting.entity.InvoiceSeries;
+import be.vercauteren.accounting.entity.InvoiceSource;
+import be.vercauteren.accounting.entity.RecurringExpense;
+import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.entity.User;
+import be.vercauteren.accounting.entity.UserRole;
+import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.specification.InvoiceSpecification;
+import jakarta.persistence.EntityNotFoundException;
+import be.vercauteren.accounting.util.FileSignatures;
+import be.vercauteren.accounting.util.InMemoryMultipartFile;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class InvoiceService {
+
+    private final InvoiceRepository invoiceRepository;
+    private final SupplierService supplierService;
+    private final FileNameGenerator fileNameGenerator;
+    private final FileStorageService fileStorageService;
+    private final AuthService authService;
+    private final ImageToPdfService imageToPdfService;
+    private final PlatformTransactionManager transactionManager;
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+        "application/pdf", "image/jpeg", "image/png", "image/gif", "image/bmp", "image/tiff", "image/webp"
+    );
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+        "pdf", "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "webp"
+    );
+
+    public List<InvoiceResponse> findByYear(Integer year) {
+        return invoiceRepository.findByYearOrderByNumberAscSubNumberAsc(year).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public List<InvoiceResponse> search(Integer year, Long supplierId, BigDecimal amountMin,
+                                         BigDecimal amountMax, LocalDate dateFrom, LocalDate dateTo,
+                                         String keyword, ExpenseCategory category) {
+        // Les criteres sont accumules puis combines: Specification.and n'accepte plus
+        // de null, un point de depart neutre ne peut donc pas etre une specification.
+        List<Specification<Invoice>> criteria = new ArrayList<>();
+
+        if (year != null) {
+            criteria.add(InvoiceSpecification.hasYear(year));
+        }
+        if (supplierId != null) {
+            criteria.add(InvoiceSpecification.hasSupplier(supplierId));
+        }
+        if (amountMin != null || amountMax != null) {
+            criteria.add(InvoiceSpecification.amountBetween(amountMin, amountMax));
+        }
+        if (dateFrom != null || dateTo != null) {
+            criteria.add(InvoiceSpecification.receptionDateBetween(dateFrom, dateTo));
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            criteria.add(InvoiceSpecification.keywordSearch(keyword.trim()));
+        }
+        if (category != null) {
+            criteria.add(InvoiceSpecification.hasCategory(category));
+        }
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "year")
+            .and(Sort.by(Sort.Direction.ASC, "number"));
+
+        return invoiceRepository.findAll(Specification.allOf(criteria), sort).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    /**
+     * Invoices whose document is still missing, optionally restricted to one year.
+     * Les depenses contractuelles en sont exclues par construction: leur absence
+     * de fichier n'est pas un oubli, c'est leur nature.
+     */
+    public List<InvoiceResponse> findMissingDocuments(Integer year, boolean includePeppol) {
+        Specification<Invoice> spec = InvoiceSpecification.missingDocument(includePeppol);
+        if (year != null) {
+            spec = spec.and(InvoiceSpecification.hasYear(year));
+        }
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "year")
+            .and(Sort.by(Sort.Direction.ASC, "number"))
+            .and(Sort.by(Sort.Direction.ASC, "subNumber"));
+
+        return invoiceRepository.findAll(spec, sort).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public InvoiceResponse findById(Long id) {
+        return toResponse(getOrThrow(id));
+    }
+
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+
+    /**
+     * Creates an invoice with SERIALIZABLE isolation and retry logic for concurrent numbering conflicts.
+     * Uses TransactionTemplate to avoid Spring proxy self-invocation issues.
+     * When linkToNumber is set, creates a sub-invoice sharing the same number.
+     */
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source) {
+        // L'auteur se resout avant la transaction: une facture sans auteur ne doit
+        // pas exister, et la contrainte ck_invoice_author_required la refuserait de
+        // toute facon. Le seul chemin dispense est l'import Excel, qui ne passe pas ici.
+        User author = authService.getCurrentUser().orElseThrow(() -> new IllegalStateException(
+            "Cannot create an invoice without an author: no authenticated user in this context"));
+        return create(request, source, author);
+    }
+
+    /**
+     * Variante pour les traitements qui s'executent sans session — le scan d'inbox
+     * planifie — et doivent donc nommer eux-memes l'auteur a inscrire.
+     */
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source, User author) {
+        return create(request, source, author, null);
+    }
+
+    /**
+     * Variante pour les echeances engendrees depuis un modele recurrent: seule
+     * l'attribution du numero justifie de passer par ici, le reste vient du modele.
+     * Le lien vers celui-ci sert a ne pas creer deux fois la meme echeance.
+     */
+    public InvoiceResponse create(InvoiceRequest request, InvoiceSource source, User author,
+                                   RecurringExpense recurringExpense) {
+        Objects.requireNonNull(author, "author");
+        Objects.requireNonNull(source, "source");
+        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+        txTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
+
+        for (int attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return txTemplate.execute(status -> {
+                    Supplier supplier = supplierService.getOrThrow(request.supplierId());
+                    // Nul vaut le facturier documente: c'est tout ce que les appelants
+                    // anterieurs aux depenses contractuelles savent creer.
+                    InvoiceSeries series = request.series() != null
+                        ? request.series() : InvoiceSeries.INVOICE;
+
+                    int assignedNumber;
+                    Integer assignedSubNumber;
+
+                    if (request.linkToNumber() != null) {
+                        // Sub-invoice mode
+                        assignedNumber = request.linkToNumber();
+                        List<Invoice> siblings = invoiceRepository.findBySeriesAndYearAndNumberOrderBySubNumberAsc(
+                            series, request.year(), assignedNumber);
+
+                        if (siblings.isEmpty()) {
+                            throw new EntityNotFoundException(
+                                "No invoice found with number " + assignedNumber + " for year " + request.year());
+                        }
+
+                        // Promote original invoice to .1 if it has no subNumber yet
+                        Invoice first = siblings.getFirst();
+                        if (first.getSubNumber() == null) {
+                            first.setSubNumber(1);
+                            invoiceRepository.save(first);
+                            // Rename the file if it exists
+                            if (first.getFilePath() != null) {
+                                try {
+                                    String newName = fileNameGenerator.generate(first);
+                                    String newPath = fileStorageService.rename(
+                                        first.getFilePath(), newName, first.getYear());
+                                    first.setFilePath(newPath);
+                                    invoiceRepository.save(first);
+                                } catch (IOException e) {
+                                    log.warn("Failed to rename file for promoted invoice {}.1: {}",
+                                        assignedNumber, e.getMessage());
+                                }
+                            }
+                        }
+
+                        // Determine next sub-number with lock
+                        int maxSub = invoiceRepository.findFirstBySeriesAndYearAndNumberOrderBySubNumberDesc(
+                                series, request.year(), assignedNumber)
+                            .map(inv -> inv.getSubNumber() != null ? inv.getSubNumber() : 1)
+                            .orElse(1);
+                        assignedSubNumber = maxSub + 1;
+                    } else {
+                        // Normal mode: auto-increment number
+                        assignedNumber = invoiceRepository.findFirstBySeriesAndYearOrderByNumberDesc(
+                                series, request.year())
+                            .map(inv -> inv.getNumber() + 1)
+                            .orElse(1);
+                        assignedSubNumber = null;
+                    }
+
+                    Invoice invoice = Invoice.builder()
+                        .number(assignedNumber)
+                        .subNumber(assignedSubNumber)
+                        .series(series)
+                        .year(request.year())
+                        .type(request.type())
+                        .supplier(supplier)
+                        .amountIncVat(request.amountIncVat())
+                        .amountExVat(request.amountExVat())
+                        .vatAmount(request.vatAmount())
+                        .receptionDate(request.receptionDate())
+                        .paymentDate(request.paymentDate())
+                        // Une depense contractuelle n'arrive par aucun canal:
+                        // la cocher Peppol l'ecarterait a tort du suivi des documents.
+                        .peppol(series == InvoiceSeries.INVOICE && Boolean.TRUE.equals(request.peppol()))
+                        .comment(request.comment())
+                        .filePath(null)
+                        .dateScope(request.dateScope())
+                        .scopeDate(request.scopeDate())
+                        .fileDetail(request.fileDetail())
+                        .falcoDocumentId(request.falcoDocumentId())
+                        .createdBy(author)
+                        .source(source)
+                        .recurringExpense(recurringExpense)
+                        .build();
+
+                    return toResponse(invoiceRepository.save(invoice));
+                });
+            } catch (DataIntegrityViolationException e) {
+                if (attempt == MAX_RETRY_ATTEMPTS - 1) {
+                    throw new IllegalStateException("Failed to generate unique invoice number after " + MAX_RETRY_ATTEMPTS + " attempts", e);
+                }
+                log.warn("Invoice number conflict on attempt {}, retrying...", attempt + 1);
+            }
+        }
+        throw new IllegalStateException("Unexpected state in invoice creation retry");
+    }
+
+    @Transactional
+    public InvoiceResponse update(Long id, InvoiceRequest request) {
+        Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
+        Supplier supplier = supplierService.getOrThrow(request.supplierId());
+
+        if (!invoice.getYear().equals(request.year())) {
+            throw new IllegalArgumentException("Cannot change invoice year. Delete and recreate the invoice instead.");
+        }
+
+        if (request.series() != null && invoice.getSeries() != request.series()) {
+            throw new IllegalArgumentException(
+                "Cannot change the series of an invoice. Delete and recreate it instead.");
+        }
+
+        // Une echeance est identifiee par la periode qu'elle couvre: la vider
+        // rendrait le modele incapable de savoir qu'elle existe, et la contrainte
+        // ck_invoice_recurring_is_expense la refuserait de toute facon.
+        if (invoice.getRecurringExpense() != null && request.scopeDate() == null) {
+            throw new IllegalArgumentException(
+                "Cannot clear the period of an entry generated from a recurring expense.");
+        }
+
+        if (invoice.getSubNumber() != null && request.subNumber() != null
+                && !invoice.getSubNumber().equals(request.subNumber())) {
+            throw new IllegalArgumentException("Cannot change sub-number of a sub-invoice.");
+        }
+        invoice.setType(request.type());
+        invoice.setSupplier(supplier);
+        invoice.setAmountIncVat(request.amountIncVat());
+        invoice.setAmountExVat(request.amountExVat());
+        invoice.setVatAmount(request.vatAmount());
+        invoice.setReceptionDate(request.receptionDate());
+        invoice.setPaymentDate(request.paymentDate());
+        invoice.setPeppol(invoice.expectsDocument() && Boolean.TRUE.equals(request.peppol()));
+        invoice.setComment(request.comment());
+        invoice.setDateScope(request.dateScope());
+        invoice.setScopeDate(request.scopeDate());
+        invoice.setFileDetail(request.fileDetail());
+
+        return toResponse(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
+    public InvoiceResponse uploadFile(Long id, MultipartFile file) throws IOException {
+        validateFileType(file);
+        validateFileContent(file);
+        Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
+        String generatedName = fileNameGenerator.generate(invoice);
+
+        if (invoice.getFilePath() != null) {
+            fileStorageService.delete(invoice.getFilePath());
+        }
+
+        MultipartFile fileToStore = file;
+        if (imageToPdfService.isImage(file)) {
+            byte[] pdfBytes = imageToPdfService.convertToPdf(file);
+            fileToStore = new InMemoryMultipartFile(
+                file.getName(), generatedName, "application/pdf", pdfBytes);
+        }
+
+        String filePath = fileStorageService.store(fileToStore, generatedName, invoice.getYear());
+        invoice.setFilePath(filePath);
+
+        try {
+            return toResponse(invoiceRepository.save(invoice));
+        } catch (Exception e) {
+            // Compensate: remove the stored file if DB update fails
+            try {
+                fileStorageService.delete(filePath);
+            } catch (IOException deleteEx) {
+                log.warn("Failed to clean up file '{}' after DB error: {}", filePath, deleteEx.getMessage());
+            }
+            throw e;
+        }
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
+
+        if (invoice.getFilePath() != null) {
+            try {
+                fileStorageService.delete(invoice.getFilePath());
+            } catch (IOException e) {
+                log.warn("Failed to delete file '{}' for invoice {}: {}", invoice.getFilePath(), id, e.getMessage());
+            }
+        }
+        invoiceRepository.delete(invoice);
+    }
+
+    /**
+     * Un non-administrateur n'agit que sur ses propres factures. La suppression
+     * l'exigeait deja, la modification et le depot de document non: un utilisateur
+     * pouvait donc reecrire montants et document d'une facture encodee par un autre.
+     *
+     * <p>Sans utilisateur en session — l'inbox planifiee — l'operation passe: elle
+     * s'execute pour le compte de l'application, pas d'une personne.
+     */
+    private void assertCanModify(Invoice invoice) {
+        authService.getCurrentUser().ifPresent(currentUser -> {
+            if (currentUser.getRole() != UserRole.ADMIN) {
+                if (invoice.getCreatedBy() == null || !invoice.getCreatedBy().getId().equals(currentUser.getId())) {
+                    throw new IllegalStateException("You can only modify invoices you created");
+                }
+            }
+        });
+    }
+
+    private void validateFileType(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("File type not allowed. Accepted: PDF, JPEG, PNG, GIF, BMP, TIFF, WebP");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename != null) {
+            int dotIndex = filename.lastIndexOf('.');
+            if (dotIndex <= 0) {
+                throw new IllegalArgumentException("File must have a valid extension. Accepted: pdf, jpg, jpeg, png, gif, bmp, tiff, tif, webp");
+            }
+            String extension = filename.substring(dotIndex + 1).toLowerCase();
+            if (!ALLOWED_EXTENSIONS.contains(extension)) {
+                throw new IllegalArgumentException("File extension not allowed. Accepted: pdf, jpg, jpeg, png, gif, bmp, tiff, tif, webp");
+            }
+        }
+    }
+
+    /**
+     * Le type MIME et l'extension sont declaratifs: on verifie que les premiers
+     * octets correspondent bien au format annonce.
+     */
+    private void validateFileContent(MultipartFile file) throws IOException {
+        String detected = FileSignatures.detect(file);
+        if (detected == null || !ALLOWED_CONTENT_TYPES.contains(detected)) {
+            throw new IllegalArgumentException(
+                "File content is not a valid PDF or image. Accepted: PDF, JPEG, PNG, GIF, BMP, TIFF, WebP");
+        }
+        if (!detected.equals(file.getContentType().toLowerCase())) {
+            throw new IllegalArgumentException(
+                "File content (" + detected + ") does not match its declared type (" + file.getContentType() + ")");
+        }
+    }
+
+    /**
+     * Acces reserve au rattachement d'une ligne a un modele recurrent. La regle
+     * d'auteur s'applique comme partout ailleurs: les lignes reprises de l'Excel
+     * n'en ont pas, seul un administrateur peut donc les rattacher.
+     */
+    Invoice getForRecurringLink(Long id) {
+        Invoice invoice = getOrThrow(id);
+        assertCanModify(invoice);
+        return invoice;
+    }
+
+    /** Vue d'une ligne rattachee, pour les ecrans du modele recurrent. */
+    InvoiceResponse toLinkedResponse(Invoice invoice) {
+        return toResponse(invoice);
+    }
+
+    /** Enregistre une ligne dont seul le lien recurrent vient de changer. */
+    InvoiceResponse saveLinked(Invoice invoice) {
+        return toResponse(invoiceRepository.save(invoice));
+    }
+
+    private Invoice getOrThrow(Long id) {
+        return invoiceRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Invoice not found: " + id));
+    }
+
+    private InvoiceResponse toResponse(Invoice invoice) {
+        return new InvoiceResponse(
+            invoice.getId(),
+            invoice.getNumber(),
+            invoice.getSubNumber(),
+            fileNameGenerator.formatNumber(invoice),
+            invoice.getSeries(),
+            invoice.getYear(),
+            invoice.getType(),
+            supplierService.toResponse(invoice.getSupplier()),
+            invoice.getAmountIncVat(),
+            invoice.getAmountExVat(),
+            invoice.getVatAmount(),
+            invoice.getReceptionDate(),
+            invoice.getPaymentDate(),
+            invoice.isPeppol(),
+            invoice.getComment(),
+            invoice.getFilePath(),
+            invoice.getDateScope(),
+            invoice.getScopeDate(),
+            invoice.getFileDetail(),
+            fileNameGenerator.generate(invoice),
+            invoice.getFalcoDocumentId(),
+            invoice.getRecurringExpense() != null ? invoice.getRecurringExpense().getId() : null,
+            invoice.getRecurringExpense() != null ? invoice.getRecurringExpense().getLabel() : null
+        );
+    }
+}

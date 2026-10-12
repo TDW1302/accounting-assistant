@@ -1,0 +1,40 @@
+@if (authService.isAuthenticated()) {
+  <nav class="navbar">
+    <a class="nav-brand" routerLink="/invoices">Comptabilité</a>
+    <button class="nav-toggle" aria-label="Menu" (click)="menuOpen = !menuOpen" [attr.aria-expanded]="menuOpen">
+      <span class="hamburger-icon"></span>
+    </button>
+    <div class="nav-menu" [class.open]="menuOpen">
+      <div class="nav-links">
+        <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen = false">Factures
+          @if (configService.inboxErrorCount() > 0) {
+            <span class="badge-error">{{ configService.inboxErrorCount() }}</span>
+          }
+        </a>
+        @if (configService.peppolEnabled()) {
+          <a routerLink="/peppol" routerLinkActive="active" (click)="menuOpen = false">Peppol</a>
+        }
+        <a routerLink="/recurring" routerLinkActive="active" (click)="menuOpen = false">Dépenses récurrentes</a>
+        <a routerLink="/suppliers" routerLinkActive="active" (click)="menuOpen = false">Fournisseurs</a>
+
+        <span class="nav-separator" aria-hidden="true"></span>
+
+        <a routerLink="/invoices/missing" routerLinkActive="active" (click)="menuOpen = false">Documents manquants</a>
+        @if (authService.hasRole('ADMIN')) {
+          <a routerLink="/users" routerLinkActive="active" (click)="menuOpen = false">Utilisateurs</a>
+          <a routerLink="/admin/suppliers/merge" routerLinkActive="active" (click)="menuOpen = false">Fusion fournisseurs</a>
+          <a routerLink="/admin/danger-zone" routerLinkActive="active" (click)="menuOpen = false">Zone de danger</a>
+        }
+      </div>
+      <div class="nav-user">
+        <span class="username">{{ authService.currentUser()?.username }}</span>
+        <a routerLink="/change-password" (click)="menuOpen = false">Profil</a>
+        <button class="btn-logout" (click)="logout(); menuOpen = false">Déconnexion</button>
+      </div>
+    </div>
+  </nav>
+}
+<main class="container">
+  <router-outlet />
+</main>
+<footer class="app-footer">v{{ version }}</footer>

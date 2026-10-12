@@ -1,0 +1,14 @@
+{
+  "backend": {
+    "tests": 236,
+    "skipped": 0,
+    "linePct": 98.87,
+    "branchPct": 90.42
+  },
+  "frontend": {
+    "tests": 118,
+    "skipped": 0,
+    "linePct": 100,
+    "branchPct": 98.48
+  }
+}

@@ -1,0 +1,10 @@
+{
+	auto_https disable_redirects
+}
+
+{$SITE_ADDRESS} {
+	tls {
+		dns duckdns {env.DUCKDNS_API_TOKEN}
+	}
+	reverse_proxy app:80
+}

@@ -1,0 +1,34 @@
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { AuthService } from './services/auth.service';
+import { ConfigService } from './services/config.service';
+import { APP_VERSION } from '../environments/version';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './app.scss'
+})
+export class App implements OnInit {
+  readonly authService = inject(AuthService);
+  readonly configService = inject(ConfigService);
+  private readonly router = inject(Router);
+  menuOpen = false;
+  version = APP_VERSION;
+
+  ngOnInit() {
+    // 401 is expected when not logged in — silently ignore
+    this.authService.getCurrentUser().subscribe({
+      next: () => this.configService.loadConfig(),
+      error: () => {}
+    });
+  }
+
+  logout() {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+    });
+  }
+}

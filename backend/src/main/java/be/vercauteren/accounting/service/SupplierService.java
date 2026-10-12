@@ -1,0 +1,95 @@
+package be.vercauteren.accounting.service;
+
+import be.vercauteren.accounting.dto.SupplierRequest;
+import be.vercauteren.accounting.dto.SupplierResponse;
+import be.vercauteren.accounting.entity.ExpenseCategory;
+import be.vercauteren.accounting.entity.Supplier;
+import be.vercauteren.accounting.repository.InvoiceRepository;
+import be.vercauteren.accounting.repository.RecurringExpenseRepository;
+import be.vercauteren.accounting.repository.SupplierRepository;
+import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class SupplierService {
+
+    private final SupplierRepository supplierRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final RecurringExpenseRepository recurringExpenseRepository;
+
+    public List<SupplierResponse> findAll() {
+        return supplierRepository.findAllOrderByName().stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public List<SupplierResponse> findAll(ExpenseCategory category) {
+        if (category == null) return findAll();
+        return supplierRepository.findByCategoryOrderByName(category).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public SupplierResponse findById(Long id) {
+        return toResponse(getOrThrow(id));
+    }
+
+    @Transactional
+    public SupplierResponse create(SupplierRequest request) {
+        Supplier supplier = Supplier.builder()
+            .name(request.name())
+            .alias(request.alias())
+            .enterpriseNumber(request.enterpriseNumber())
+            .category(request.category())
+            .defaultDateScope(request.defaultDateScope())
+            .defaultPeppol(request.defaultPeppol())
+            .build();
+        return toResponse(supplierRepository.save(supplier));
+    }
+
+    @Transactional
+    public SupplierResponse update(Long id, SupplierRequest request) {
+        Supplier supplier = getOrThrow(id);
+        supplier.setName(request.name());
+        supplier.setAlias(request.alias());
+        supplier.setEnterpriseNumber(request.enterpriseNumber());
+        supplier.setCategory(request.category());
+        supplier.setDefaultDateScope(request.defaultDateScope());
+        supplier.setDefaultPeppol(request.defaultPeppol());
+        return toResponse(supplierRepository.save(supplier));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Supplier supplier = getOrThrow(id);
+        if (invoiceRepository.existsBySupplierId(supplier.getId())) {
+            throw new IllegalArgumentException("Cannot delete supplier: invoices reference this supplier");
+        }
+        if (recurringExpenseRepository.existsBySupplierId(supplier.getId())) {
+            throw new IllegalArgumentException(
+                "Cannot delete supplier: recurring expenses reference this supplier");
+        }
+        supplierRepository.delete(supplier);
+    }
+
+    Supplier getOrThrow(Long id) {
+        return supplierRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Supplier not found: " + id));
+    }
+
+    SupplierResponse toResponse(Supplier supplier) {
+        return new SupplierResponse(
+            supplier.getId(),
+            supplier.getName(),
+            supplier.getAlias(),
+            supplier.getEnterpriseNumber(),
+            supplier.getCategory(),
+            supplier.getDefaultDateScope(),
+            supplier.isDefaultPeppol()
+        );
+    }
+}
